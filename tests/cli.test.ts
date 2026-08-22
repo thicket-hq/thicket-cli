@@ -33,7 +33,7 @@ const PROJECTS = [
 function fakeFetch(
   routes: Record<string, unknown | ((init?: RequestInit) => unknown)>,
 ): typeof globalThis.fetch {
-  return (async (input: RequestInfo | URL, init?: RequestInit) => {
+  return (async (input: Parameters<typeof globalThis.fetch>[0], init?: RequestInit) => {
     const url = new URL(String(input instanceof Request ? input.url : input));
     const key = `${(init?.method ?? "GET").toUpperCase()} ${url.pathname}`;
     if (key in routes) {
