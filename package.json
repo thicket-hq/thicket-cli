@@ -1,0 +1,47 @@
+{
+  "name": "thicket-cli",
+  "version": "0.1.0",
+  "description": "Official command-line interface for Thicket (thickethq.com): projects, to-dos, messages, docs and files, boards, chat, search, and reports from your terminal or through AI agents.",
+  "keywords": [
+    "thicket",
+    "cli",
+    "api",
+    "project-management",
+    "agent"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thicket-hq/thicket-cli.git"
+  },
+  "homepage": "https://github.com/thicket-hq/thicket-cli#readme",
+  "type": "module",
+  "bin": {
+    "thicket": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "skills",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "picocolors": "^1.1.0",
+    "thicket-sdk": "^0.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
