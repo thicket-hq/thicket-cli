@@ -1,13 +1,16 @@
 {
   "name": "thicket-cli",
-  "version": "0.1.0",
-  "description": "Official command-line interface for Thicket (thickethq.com): projects, to-dos, messages, docs and files, boards, chat, search, and reports from your terminal or through AI agents.",
+  "version": "0.2.0",
+  "description": "Official command-line interface for Thicket (thickethq.com): projects, to-dos, messages, docs and files, boards, chat, search, reports, notifications, cheers, and the local agent connector, from your terminal or through AI agents.",
   "keywords": [
     "thicket",
     "cli",
     "api",
     "project-management",
-    "agent"
+    "agent",
+    "claude-code",
+    "connector",
+    "notifications"
   ],
   "license": "MIT",
   "repository": {
@@ -22,11 +25,15 @@
   "files": [
     "dist",
     "skills",
+    ".claude-plugin",
+    "hooks",
     "README.md",
+    "install.md",
+    "AGENTS.md",
     "LICENSE"
   ],
   "engines": {
-    "node": ">=18.17"
+    "node": ">=20"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -36,6 +43,8 @@
   },
   "dependencies": {
     "commander": "^12.1.0",
+    "jq-wasm": "3.0.0-jq-1.8.2",
+    "marked": "18.0.11",
     "picocolors": "^1.1.0",
     "thicket-sdk": "^0.1.1"
   },

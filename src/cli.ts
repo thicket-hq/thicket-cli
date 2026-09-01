@@ -3,16 +3,24 @@
 // with injected env/fetch/streams.
 import "./lib/color-init.js";
 import { Command, CommanderError } from "commander";
+import { agentCommands } from "./commands/agent.js";
+import { apiCommands } from "./commands/api.js";
 import { authCommands } from "./commands/auth.js";
 import { cardCommands } from "./commands/cards.js";
 import { chatCommands } from "./commands/chat.js";
+import { cheerCommands } from "./commands/cheers.js";
 import { fileCommands } from "./commands/files.js";
 import { messageCommands } from "./commands/messages.js";
 import { metaCommands } from "./commands/meta.js";
+import { notificationCommands } from "./commands/notifications.js";
+import { peopleCommands } from "./commands/people.js";
 import { projectCommands } from "./commands/projects.js";
 import { recordingCommands } from "./commands/recordings.js";
 import { searchCommands } from "./commands/search.js";
+import { setupCommands } from "./commands/setup.js";
+import { subscriptionCommands } from "./commands/subscriptions.js";
 import { todoCommands } from "./commands/todos.js";
+import { urlCommands } from "./commands/url.js";
 import { CliContext, VERSION } from "./lib/context.js";
 import {
   renderError,
@@ -39,6 +47,14 @@ export function allCommands(): CommandSpec[] {
     ...chatCommands,
     ...searchCommands,
     ...recordingCommands,
+    ...notificationCommands,
+    ...cheerCommands,
+    ...subscriptionCommands,
+    ...peopleCommands,
+    ...agentCommands,
+    ...urlCommands,
+    ...apiCommands,
+    ...setupCommands,
   ];
   return [...base, ...metaCommands(allCommands)];
 }
@@ -51,7 +67,41 @@ export type RunOptions = {
   writeErr?: (line: string) => void;
 };
 
+function jqFromArgv(argv: string[]): string | undefined {
+  const i = argv.indexOf("--jq");
+  if (i !== -1) return argv[i + 1];
+  const inline = argv.find((a) => a.startsWith("--jq="));
+  return inline ? inline.slice("--jq=".length) : undefined;
+}
+
+/**
+ * `thicket agent watch --agent <name>` reuses the global --agent word with a
+ * value. Commander would let the root boolean win and drop the value, so
+ * the pair is lifted out of argv here and handed to the handler directly.
+ */
+function liftWatchAgent(argv: string[]): { argv: string[]; agentRef?: string } {
+  const words = argv.filter((a) => !a.startsWith("-"));
+  if (words[0] !== "agent" || words[1] !== "watch") return { argv };
+  const out: string[] = [];
+  let agentRef: string | undefined;
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg.startsWith("--agent=")) {
+      agentRef = arg.slice("--agent=".length);
+      continue;
+    }
+    if (arg === "--agent" && argv[i + 1] !== undefined && !argv[i + 1].startsWith("-")) {
+      agentRef = argv[i + 1];
+      i += 1;
+      continue;
+    }
+    out.push(arg);
+  }
+  return { argv: out, agentRef };
+}
+
 function modeFromArgv(argv: string[]): OutputMode {
+  if (jqFromArgv(argv) !== undefined) return "json";
   if (argv.includes("--agent")) return "agent";
   if (argv.includes("--ids-only")) return "ids";
   if (argv.includes("--count")) return "count";
@@ -97,16 +147,19 @@ function agentHelp(
 }
 
 export async function run(
-  argv: string[],
+  rawArgv: string[],
   options: RunOptions = {},
 ): Promise<number> {
   const specs = allCommands();
+  const lifted = liftWatchAgent(rawArgv);
+  const argv = lifted.argv;
   const mode = modeFromArgv(argv);
   const target: RenderTarget = {
     mode,
     isTty: options.isTty ?? process.stdout.isTTY === true,
     write: options.write ?? ((line) => process.stdout.write(`${line}\n`)),
     writeErr: options.writeErr ?? ((line) => process.stderr.write(`${line}\n`)),
+    jq: jqFromArgv(argv),
   };
 
   if (agentHelp(argv, specs, target)) return 0;
@@ -122,6 +175,7 @@ export async function run(
     .option("--agent", "Agent mode: data-only JSON, no prompts")
     .option("--ids-only", "One id per line")
     .option("--count", "Item count only")
+    .option("--jq <filter>", "Filter the JSON envelope with jq (implies --json)")
     .option("--base-url <url>", "API host override")
     .option("--no-color", "Disable ANSI colors")
     .exitOverride()
@@ -176,6 +230,9 @@ export async function run(
         .flat()
         .filter((v): v is string => typeof v === "string");
       const opts = cmd.optsWithGlobals();
+      if (lifted.agentRef !== undefined && spec.path.join(" ") === "agent watch") {
+        opts.agent = lifted.agentRef;
+      }
       const ctx = new CliContext(
         {
           org: opts.org as string | undefined,
@@ -187,7 +244,7 @@ export async function run(
       );
       try {
         const result = await spec.handler(ctx, positionals, opts);
-        exitCode = renderSuccess(result, target);
+        exitCode = await renderSuccess(result, target);
       } catch (err) {
         exitCode = renderError(toCliError(err), target);
       }

@@ -2,8 +2,11 @@
 // column, so `thicket done <card>` works on cards too.
 import pc from "picocolors";
 import type { CliContext } from "../lib/context.js";
+import { bodyFields } from "../lib/markdown.js";
 import { CliError, clip, day, table, type CommandResult } from "../lib/output.js";
+import { readBody, resolveRecordingRef } from "../lib/refs.js";
 import type { CommandSpec } from "../lib/registry.js";
+import { contentFlags, markdownNotes, recordingArg } from "../lib/specs.js";
 import {
   resolveColumn,
   resolvePeople,
@@ -93,9 +96,10 @@ async function list(
 
 async function show(ctx: CliContext, args: string[]): Promise<CommandResult> {
   const org = await ctx.org();
-  const row = (await org.recordings.get(args[0])) as RecordingRow;
+  const id = resolveRecordingRef(ctx, args[0]).id;
+  const row = (await org.recordings.get(id)) as RecordingRow;
   const steps = (await org.recordings
-    .children(args[0], { type: "step" })
+    .children(id, { type: "step" })
     .catch(() => [])) as RecordingRow[];
   const data = { ...row, steps };
   return {
@@ -131,8 +135,15 @@ async function create(
   }
   const column = await resolveColumn(ctx, projectRef, String(options.column));
   const org = await ctx.org();
-  const body: Record<string, unknown> = { type: "card", title: args[0] };
-  if (options.content) body.content = options.content;
+  const body: Record<string, unknown> = {
+    type: "card",
+    title: args[0],
+    ...(await bodyFields(ctx, {
+      content: await readBody(options.content),
+      contentHtml: options.contentHtml as string | undefined,
+      plain: options.plain === true,
+    })),
+  };
   if (options.due) body.due_on = parseDate(String(options.due));
   if (options.assignee) {
     body.assignee_ids = await resolvePeople(
@@ -163,20 +174,21 @@ async function move(
     throw new CliError("usage", "Where should the card go?", "Pass --to <column name or id>");
   }
   const org = await ctx.org();
-  const card = (await org.recordings.get(args[0])) as RecordingRow;
+  const id = resolveRecordingRef(ctx, args[0]).id;
+  const card = (await org.recordings.get(id)) as RecordingRow;
   const projectRef = String(options.in ?? card.project_id ?? "");
   if (!projectRef) {
     throw new CliError("usage", "Could not determine the card's project", "Pass --in <project>");
   }
   const column = await resolveColumn(ctx, projectRef, String(options.to));
-  await org.recordings.move(args[0], {
+  await org.recordings.move(id, {
     parent_id: column.id,
     ...(options.position !== undefined
       ? { position: Number(options.position) }
       : {}),
   });
   return {
-    data: { id: args[0], column_id: column.id },
+    data: { id, column_id: column.id },
     summary: `Moved "${card.title}" to "${column.title}"`,
     human: [`${pc.green("Moved.")} ${card.title} → ${column.title}`],
   };
@@ -193,10 +205,11 @@ const createSpec: Omit<CommandSpec, "path" | "summary"> = {
   flags: [
     inFlag,
     { flag: "--column <column>", description: "Column name or id (required)" },
-    { flag: "-c, --content <text>", description: "Card description" },
+    ...contentFlags("Card description"),
     { flag: "-d, --due <date>", description: "Due date (natural language ok)" },
     { flag: "-a, --assignee <person...>", description: 'Assign people: "me", a name, or an email' },
   ],
+  notes: markdownNotes,
   handler: create,
 };
 
@@ -226,7 +239,7 @@ export const cardCommands: CommandSpec[] = [
     path: ["cards", "show"],
     category: CATEGORY,
     summary: "One card in full, with its steps",
-    args: [{ name: "id", description: "Card id", required: true }],
+    args: [recordingArg("Card id or URL")],
     handler: show,
   },
   { path: ["cards", "create"], summary: "Add a card to a column", ...createSpec },
@@ -235,7 +248,7 @@ export const cardCommands: CommandSpec[] = [
     path: ["cards", "move"],
     category: CATEGORY,
     summary: "Move a card to another column",
-    args: [{ name: "id", description: "Card id", required: true }],
+    args: [recordingArg("Card id or URL")],
     flags: [
       { flag: "--to <column>", description: "Destination column name or id" },
       { flag: "--position <n>", description: "Position inside the column" },

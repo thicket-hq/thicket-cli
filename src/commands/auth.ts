@@ -274,7 +274,7 @@ async function me(ctx: CliContext): Promise<CommandResult> {
       `Identity: ${doc.identity.id}`,
       `Scope: ${doc.scope}${doc.expires_at ? ` (expires ${doc.expires_at})` : ""}`,
       ...doc.organizations.map(
-        (o) => `  ${o.name} (${o.slug}) as ${o.role}, membership ${o.membership_id}`,
+        (o) => `  ${o.name} (${o.slug}) as ${o.role} (${o.membership_kind ?? "person"}), membership ${o.membership_id}`,
       ),
     ],
     breadcrumbs: [
@@ -293,12 +293,25 @@ async function doctor(ctx: CliContext): Promise<CommandResult> {
   push("cli", true, `thicket-cli ${VERSION}`);
   push("host", true, ctx.settings.baseUrl);
 
+  // Reachability is separate from authentication: any HTTP answer from
+  // the host means the API is up, even a 401 for a missing token.
+  try {
+    const probe = await fetch(`${ctx.settings.baseUrl}/api/v1/authorization`, {
+      headers: { "user-agent": userAgent() },
+      signal: AbortSignal.timeout(8000),
+    });
+    push("reach", true, `${ctx.settings.baseUrl} answered HTTP ${probe.status}`);
+  } catch (err) {
+    push("reach", false, `${ctx.settings.baseUrl} unreachable: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   const creds = await ctx.credentials();
   push(
     "token",
     !!creds,
     creds ? `present (from ${creds.store})` : "missing; run: thicket auth login",
   );
+  let whoami: Record<string, unknown> | null = null;
   if (creds) {
     try {
       const doc = await ctx.authorization();
@@ -314,13 +327,36 @@ async function doctor(ctx: CliContext): Promise<CommandResult> {
           ? `acting in ${acting}`
           : `no default among ${orgCount} orgs; run: thicket orgs use <slug>`,
       );
+      const org = doc.organizations.find((o) => o.slug === acting) ?? null;
+      whoami = {
+        identity: doc.identity.id,
+        scope: doc.scope,
+        expires_at: doc.expires_at,
+        org: org?.slug ?? null,
+        membership_id: org?.membership_id ?? null,
+        role: org?.role ?? null,
+        membership_kind: org?.membership_kind ?? (org ? "person" : null),
+        organizations: doc.organizations.map((o) => ({
+          slug: o.slug,
+          membership_id: o.membership_id,
+          role: o.role,
+          membership_kind: o.membership_kind ?? "person",
+        })),
+      };
+      push(
+        "whoami",
+        !!org || orgCount === 0,
+        org
+          ? `membership ${org.membership_id} (${org.membership_kind ?? "person"}, ${org.role}) in ${org.slug}`
+          : "no acting org",
+      );
     } catch (err) {
       push("api", false, err instanceof Error ? err.message : String(err));
     }
   }
   const healthy = checks.every((c) => c.ok);
   return {
-    data: { healthy, checks },
+    data: { healthy, checks, whoami },
     summary: healthy ? "All checks passed" : "Some checks failed",
     human: checks.map(
       (c) => `${c.ok ? pc.green("ok ") : pc.red("FAIL")} ${c.check.padEnd(6)} ${c.detail}`,
@@ -402,7 +438,8 @@ export const authCommands: CommandSpec[] = [
   {
     path: ["doctor"],
     category: CATEGORY,
-    summary: "Check CLI health: node, token, API reachability, org",
+    summary: "Check CLI health: node, token, API reachability, org, whoami",
+    notes: ["--json gives {healthy, checks[], whoami} with membership_kind (person or agent)"],
     handler: doctor,
   },
 ];

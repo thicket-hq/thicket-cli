@@ -6,10 +6,13 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import pc from "picocolors";
 import type { CliContext } from "../lib/context.js";
+import { bodyFields } from "../lib/markdown.js";
 import { CliError, clip, day, table, type CommandResult } from "../lib/output.js";
+import { readBody, resolveRecordingRef } from "../lib/refs.js";
 import type { CommandSpec } from "../lib/registry.js";
 import { looksLikeId, matchNamed, resolveTool } from "../lib/resolve.js";
 import { detailLines, type RecordingRow } from "../lib/rows.js";
+import { contentFlags, markdownNotes, recordingArg } from "../lib/specs.js";
 
 const CATEGORY = "Docs & Files";
 
@@ -112,7 +115,7 @@ async function docsList(
 
 async function docsShow(ctx: CliContext, args: string[]): Promise<CommandResult> {
   const org = await ctx.org();
-  const row = (await org.recordings.get(args[0])) as RecordingRow;
+  const row = (await org.recordings.get(resolveRecordingRef(ctx, args[0]).id)) as RecordingRow;
   return {
     data: row,
     summary: String(row.title ?? row.id),
@@ -130,9 +133,15 @@ async function docsCreate(
 ): Promise<CommandResult> {
   const folder = await resolveFolder(ctx, options);
   const org = await ctx.org();
-  const body: Record<string, unknown> = { type: "document", title: args[0] };
-  if (options.contentHtml) body.content_html = options.contentHtml;
-  else if (options.content) body.content = options.content;
+  const body: Record<string, unknown> = {
+    type: "document",
+    title: args[0],
+    ...(await bodyFields(ctx, {
+      content: await readBody(options.content),
+      contentHtml: options.contentHtml as string | undefined,
+      plain: options.plain === true,
+    })),
+  };
   const created = (await org.recordings.createChild(
     folder.id,
     body as { type: string },
@@ -149,15 +158,19 @@ async function docsUpdate(
   args: string[],
   options: Record<string, unknown>,
 ): Promise<CommandResult> {
-  const body: Record<string, unknown> = {};
+  const body: Record<string, unknown> = {
+    ...(await bodyFields(ctx, {
+      content: await readBody(options.content),
+      contentHtml: options.contentHtml as string | undefined,
+      plain: options.plain === true,
+    })),
+  };
   if (options.title !== undefined) body.title = options.title;
-  if (options.contentHtml !== undefined) body.content_html = options.contentHtml;
-  else if (options.content !== undefined) body.content = options.content;
   if (Object.keys(body).length === 0) {
     throw new CliError("usage", "Nothing to update", "Pass --title or --content");
   }
   const org = await ctx.org();
-  const updated = (await org.request("PATCH", `/recordings/${args[0]}`, {
+  const updated = (await org.request("PATCH", `/recordings/${resolveRecordingRef(ctx, args[0]).id}`, {
     body,
   })) as RecordingRow;
   return {
@@ -304,7 +317,7 @@ export const fileCommands: CommandSpec[] = [
     path: ["docs", "show"],
     category: CATEGORY,
     summary: "Read a doc",
-    args: [{ name: "id", description: "Doc id", required: true }],
+    args: [recordingArg("Doc id or URL")],
     handler: docsShow,
   },
   {
@@ -312,24 +325,17 @@ export const fileCommands: CommandSpec[] = [
     category: CATEGORY,
     summary: "Create a doc",
     args: [{ name: "title", description: "Doc title", required: true }],
-    flags: [
-      inFlag,
-      folderFlag,
-      { flag: "-c, --content <text>", description: "Body as plain text" },
-      { flag: "--content-html <html>", description: "Body as rich HTML (sanitized server-side)" },
-    ],
+    flags: [inFlag, folderFlag, ...contentFlags("Body")],
+    notes: markdownNotes,
     handler: docsCreate,
   },
   {
     path: ["docs", "update"],
     category: CATEGORY,
     summary: "Edit a doc",
-    args: [{ name: "id", description: "Doc id", required: true }],
-    flags: [
-      { flag: "--title <title>", description: "New title" },
-      { flag: "-c, --content <text>", description: "New body (plain text)" },
-      { flag: "--content-html <html>", description: "New body (rich HTML)" },
-    ],
+    args: [recordingArg("Doc id or URL")],
+    flags: [{ flag: "--title <title>", description: "New title" }, ...contentFlags("New body")],
+    notes: markdownNotes,
     handler: docsUpdate,
   },
 ];

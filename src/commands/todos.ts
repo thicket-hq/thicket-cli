@@ -4,8 +4,11 @@
 import pc from "picocolors";
 import type { CliContext } from "../lib/context.js";
 import { parseDate } from "../lib/dates.js";
+import { bodyFields } from "../lib/markdown.js";
 import { CliError, clip, day, table, type CommandResult } from "../lib/output.js";
+import { readBody, resolveRecordingRef } from "../lib/refs.js";
 import type { CommandSpec } from "../lib/registry.js";
+import { plainFlag, recordingArg } from "../lib/specs.js";
 import {
   resolvePeople,
   resolveProject,
@@ -68,10 +71,11 @@ async function todosShow(
   args: string[],
 ): Promise<CommandResult> {
   const org = await ctx.org();
-  const row = (await org.recordings.get(args[0])) as RecordingRow;
+  const id = resolveRecordingRef(ctx, args[0]).id;
+  const row = (await org.recordings.get(id)) as RecordingRow;
   const assignees = await org.request<{ membership_id: string; name: string }[]>(
     "GET",
-    `/recordings/${args[0]}/assignees`,
+    `/recordings/${id}/assignees`,
   ).catch(() => []);
   const data = { ...row, assignees };
   return {
@@ -107,7 +111,7 @@ async function todoAdd(
   const body: Record<string, unknown> = { type: "todo", title: args[0] };
   if (options.due) body.due_on = parseDate(String(options.due));
   if (options.start) body.starts_on = parseDate(String(options.start));
-  if (options.notes) body.content = options.notes;
+  Object.assign(body, await bodyFields(ctx, { content: await readBody(options.notes), plain: options.plain === true }));
   if (options.assignee) {
     body.assignee_ids = await resolvePeople(
       ctx,
@@ -142,13 +146,13 @@ async function todosUpdate(
   if (options.start !== undefined) {
     body.starts_on = options.start === "none" ? null : parseDate(String(options.start));
   }
-  if (options.notes !== undefined) body.content = options.notes;
+  Object.assign(body, await bodyFields(ctx, { content: await readBody(options.notes), plain: options.plain === true }));
   if (Object.keys(body).length === 0) {
     throw new CliError("usage", "Nothing to update", "Pass --title, --due, --start, or --notes");
   }
   const updated = (await org.request(
     "PATCH",
-    `/recordings/${args[0]}`,
+    `/recordings/${resolveRecordingRef(ctx, args[0]).id}`,
     { body },
   )) as RecordingRow;
   return {
@@ -161,7 +165,11 @@ async function todosUpdate(
 function completion(complete: boolean): CommandSpec["handler"] {
   return async (ctx, args) => {
     const org = await ctx.org();
-    const ids = args[0].split(",").map((s) => s.trim()).filter(Boolean);
+    const ids = args[0]
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => resolveRecordingRef(ctx, s).id);
     if (ids.length === 0) {
       throw new CliError("usage", "No to-do ids given");
     }
@@ -186,7 +194,8 @@ async function assign(
   args: string[],
   options: Record<string, unknown>,
 ): Promise<CommandResult> {
-  const [id, ...people] = args;
+  const [rawId, ...people] = args;
+  const id = resolveRecordingRef(ctx, rawId).id;
   const org = await ctx.org();
   let ids: string[];
   if (options.none) {
@@ -253,8 +262,11 @@ async function listsCreate(
 ): Promise<CommandResult> {
   const tool = await resolveTool(ctx, requireIn(options), "todos");
   const org = await ctx.org();
-  const body: Record<string, unknown> = { type: "todolist", title: args[0] };
-  if (options.notes) body.content = options.notes;
+  const body: Record<string, unknown> = {
+    type: "todolist",
+    title: args[0],
+    ...(await bodyFields(ctx, { content: await readBody(options.notes), plain: options.plain === true })),
+  };
   const created = (await org.recordings.createChild(
     tool.containerId,
     body as { type: string },
@@ -281,7 +293,8 @@ const addFlags = [
   { flag: "-d, --due <date>", description: 'Due date: 2026-09-01, "tomorrow", "friday", "+3"' },
   { flag: "--start <date>", description: "Start date (makes it a date range)" },
   { flag: "-a, --assignee <person...>", description: 'Assign people: "me", a name, or an email' },
-  { flag: "--notes <text>", description: "Notes under the to-do" },
+  { flag: "--notes <markdown>", description: "Notes under the to-do, as Markdown (or - for stdin)" },
+  plainFlag,
 ];
 
 const addSpec: Omit<CommandSpec, "path" | "summary"> = {
@@ -312,7 +325,7 @@ export const todoCommands: CommandSpec[] = [
     path: ["todos", "show"],
     category: CATEGORY,
     summary: "One to-do in full, with assignees",
-    args: [{ name: "id", description: "To-do id", required: true }],
+    args: [recordingArg("To-do id or URL")],
     handler: todosShow,
   },
   {
@@ -329,12 +342,13 @@ export const todoCommands: CommandSpec[] = [
     path: ["todos", "update"],
     category: CATEGORY,
     summary: "Edit a to-do's title, dates, or notes",
-    args: [{ name: "id", description: "To-do id", required: true }],
+    args: [recordingArg("To-do id or URL")],
     flags: [
       { flag: "--title <title>", description: "New title" },
       { flag: "-d, --due <date>", description: 'New due date ("none" clears it)' },
       { flag: "--start <date>", description: 'New start date ("none" clears it)' },
-      { flag: "--notes <text>", description: "New notes" },
+      { flag: "--notes <markdown>", description: "New notes, as Markdown (or - for stdin)" },
+      plainFlag,
     ],
     handler: todosUpdate,
   },
@@ -401,7 +415,7 @@ export const todoCommands: CommandSpec[] = [
     category: CATEGORY,
     summary: "Create a to-do list",
     args: [{ name: "title", description: "List title", required: true }],
-    flags: [inFlag, { flag: "--notes <text>", description: "Description under the list title" }],
+    flags: [inFlag, { flag: "--notes <markdown>", description: "Description under the list title (Markdown)" }, plainFlag],
     handler: listsCreate,
   },
 ];

@@ -25,6 +25,8 @@ export type CommandResult = {
   human?: string[];
   /** For --ids-only: how to pull ids out of `data` (default: data[].id). */
   ids?: string[];
+  /** The command already wrote its output (a long-running stream); render nothing. */
+  silent?: boolean;
 };
 
 export type CliErrorCode =
@@ -52,14 +54,29 @@ export const EXIT_CODES: Record<CliErrorCode, number> = {
   plan_limit: 10,
 };
 
+/**
+ * Codes a caller may retry blindly: the request never reached a verdict
+ * (network, timeout), or the server asked for a retry (429, 5xx). Every
+ * other code is a verdict and a retry would repeat the same answer.
+ */
+const RETRYABLE_CODES = new Set<CliErrorCode>(["network", "rate_limit"]);
+
 export class CliError extends Error {
+  /** Whether the same call may be retried as-is (network, 429, 5xx). */
+  public retryable: boolean;
+  /** Seconds to wait before retrying, when the server said. */
+  public retryAfter?: number;
+
   constructor(
     public code: CliErrorCode,
     message: string,
     public hint?: string,
+    options: { retryable?: boolean; retryAfter?: number } = {},
   ) {
     super(message);
     this.name = "CliError";
+    this.retryable = options.retryable ?? RETRYABLE_CODES.has(code);
+    this.retryAfter = options.retryAfter;
   }
 }
 
@@ -84,13 +101,30 @@ export function fromSdkError(err: ThicketError): CliError {
     hint = `Retry after ${err.retryAfter}s`;
   } else if (err.apiCode === "read_only_token") {
     hint = "Re-authenticate with write access: thicket auth login --scope full";
+  } else if (err.apiCode === "session_required") {
+    hint = "This route needs a signed-in browser session, not a token; use the web app";
   }
-  return new CliError(code, err.message, hint);
+  // The SDK stamps retryable on network errors, 429 and 5xx; a 5xx without
+  // the stamp is still worth a retry, a 4xx never is.
+  const retryable =
+    err.retryable ||
+    code === "network" ||
+    code === "rate_limit" ||
+    (err.status !== undefined && err.status >= 500);
+  return new CliError(code, err.message, hint, {
+    retryable,
+    retryAfter: err.retryAfter,
+  });
 }
 
 export function toCliError(err: unknown): CliError {
   if (err instanceof CliError) return err;
   if (err instanceof ThicketError) return fromSdkError(err);
+  if (err instanceof Error && err.name === "AbortError") {
+    return new CliError("network", "The request timed out", undefined, {
+      retryable: true,
+    });
+  }
   return new CliError(
     "api",
     err instanceof Error ? err.message : String(err),
@@ -118,11 +152,36 @@ export type RenderTarget = {
   isTty: boolean;
   write: (line: string) => void;
   writeErr: (line: string) => void;
+  /** A jq filter applied to the success envelope (implies JSON mode). */
+  jq?: string;
 };
 
+/** The success envelope as `--json` prints it. */
+export function successEnvelope(result: CommandResult): Record<string, unknown> {
+  const envelope: Record<string, unknown> = { ok: true, data: result.data };
+  if (result.summary) envelope.summary = result.summary;
+  if (result.notice) envelope.notice = result.notice;
+  if (result.breadcrumbs?.length) envelope.breadcrumbs = result.breadcrumbs;
+  return envelope;
+}
+
 /** Renders a success and returns the process exit code (always 0). */
-export function renderSuccess(result: CommandResult, target: RenderTarget): number {
+export async function renderSuccess(
+  result: CommandResult,
+  target: RenderTarget,
+): Promise<number> {
   const { mode, isTty } = target;
+  if (result.silent) return 0;
+  if (target.jq) {
+    // --jq filters the envelope; each jq output is one line, strings raw
+    // (gh's convention), everything else compact JSON.
+    const { applyJq } = await import("./jq.js");
+    const outputs = await applyJq(successEnvelope(result), target.jq);
+    for (const value of outputs) {
+      target.write(typeof value === "string" ? value : JSON.stringify(value));
+    }
+    return 0;
+  }
   const effective = mode === "auto" ? (isTty ? "styled" : "json") : mode;
   switch (effective) {
     case "ids":
@@ -137,11 +196,7 @@ export function renderSuccess(result: CommandResult, target: RenderTarget): numb
       if (result.notice) target.writeErr(result.notice);
       return 0;
     case "json": {
-      const envelope: Record<string, unknown> = { ok: true, data: result.data };
-      if (result.summary) envelope.summary = result.summary;
-      if (result.notice) envelope.notice = result.notice;
-      if (result.breadcrumbs?.length) envelope.breadcrumbs = result.breadcrumbs;
-      target.write(JSON.stringify(envelope, null, 2));
+      target.write(JSON.stringify(successEnvelope(result), null, 2));
       return 0;
     }
     default: {
@@ -166,21 +221,28 @@ export function renderSuccess(result: CommandResult, target: RenderTarget): numb
   }
 }
 
+/** The error envelope as every non-TTY mode prints it. */
+export function errorEnvelope(err: CliError): Record<string, unknown> {
+  const envelope: Record<string, unknown> = {
+    ok: false,
+    error: err.message,
+    code: err.code,
+    retryable: err.retryable,
+  };
+  if (err.hint) envelope.hint = err.hint;
+  if (err.retryAfter !== undefined) envelope.retry_after = err.retryAfter;
+  return envelope;
+}
+
 /** Renders a failure and returns its exit code. Errors are always structured. */
 export function renderError(err: CliError, target: RenderTarget): number {
   const { mode, isTty } = target;
-  const styled = mode === "auto" && isTty;
+  const styled = mode === "auto" && isTty && !target.jq;
   if (styled) {
     target.writeErr(`${pc.red("error:")} ${err.message}`);
     if (err.hint) target.writeErr(pc.dim(err.hint));
   } else {
-    const envelope: Record<string, unknown> = {
-      ok: false,
-      error: err.message,
-      code: err.code,
-    };
-    if (err.hint) envelope.hint = err.hint;
-    target.writeErr(JSON.stringify(envelope, null, 2));
+    target.writeErr(JSON.stringify(errorEnvelope(err), null, 2));
   }
   return EXIT_CODES[err.code] ?? 1;
 }

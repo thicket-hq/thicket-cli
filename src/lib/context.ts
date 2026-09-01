@@ -17,18 +17,34 @@ export function userAgent(): string {
   return `thicket-cli/${VERSION} (+https://www.thickethq.com/developers/api)`;
 }
 
+export type AuthorizationOrg = {
+  id: string;
+  name: string;
+  slug: string;
+  href: string;
+  membership_id: string;
+  role: string;
+  /** "agent" when the credential belongs to an AI agent membership. */
+  membership_kind?: "person" | "agent";
+};
+
 export type AuthorizationDoc = {
   identity: { id: string };
-  organizations: {
-    id: string;
-    name: string;
-    slug: string;
-    href: string;
-    membership_id: string;
-    role: string;
-  }[];
+  organizations: AuthorizationOrg[];
   scope: "read" | "full";
   expires_at: string | null;
+};
+
+export type Person = {
+  membership_id: string;
+  name: string;
+  email: string;
+  role: string;
+  kind?: "person" | "agent";
+  active?: boolean | null;
+  title?: string | null;
+  company_name?: string | null;
+  image?: string | null;
 };
 
 export class CliContext {
@@ -38,6 +54,8 @@ export class CliContext {
   private sdkInstance: Thicket | null = null;
   private tokenInfo: { token: string; store: TokenStore } | null | undefined;
   private authDoc: AuthorizationDoc | null = null;
+  private orgOverride: string | null = null;
+  private peopleCache: Person[] | null = null;
 
   constructor(
     flags: { org?: string; profile?: string; baseUrl?: string },
@@ -89,8 +107,24 @@ export class CliContext {
     return this.authDoc;
   }
 
+  /**
+   * A pasted URL names its org; adopt it for this invocation unless --org
+   * was passed explicitly and disagrees (then the flag is the user's word).
+   */
+  adoptOrg(slug: string): void {
+    if (this.settings.sources.org === "flag" && this.settings.org !== slug) {
+      throw new CliError(
+        "usage",
+        `That URL belongs to "${slug}" but --org says "${this.settings.org}"`,
+        "Drop --org, or pass the matching one",
+      );
+    }
+    this.orgOverride = slug;
+  }
+
   /** The org slug this invocation acts in; auto-picks a sole org. */
   async orgSlug(): Promise<string> {
+    if (this.orgOverride) return this.orgOverride;
     if (this.settings.org) return this.settings.org;
     const doc = await this.authorization();
     if (doc.organizations.length === 1) return doc.organizations[0].slug;
@@ -115,15 +149,28 @@ export class CliContext {
     return sdk.org(await this.orgSlug());
   }
 
-  /** The caller's membership id inside the acting org (`me`). */
-  async myMembershipId(): Promise<string> {
+  /** The caller's row for the acting org: membership id, role, kind. */
+  async whoami(): Promise<AuthorizationOrg> {
     const slug = await this.orgSlug();
     const doc = await this.authorization();
     const org = doc.organizations.find((o) => o.slug === slug);
     if (!org?.membership_id) {
       throw new CliError("not_found", `You are not a member of "${slug}"`);
     }
-    return org.membership_id;
+    return org;
+  }
+
+  /** The caller's membership id inside the acting org (`me`). */
+  async myMembershipId(): Promise<string> {
+    return (await this.whoami()).membership_id;
+  }
+
+  /** GET /people for the acting org, cached for the invocation. */
+  async people(): Promise<Person[]> {
+    if (this.peopleCache) return this.peopleCache;
+    const org = await this.org();
+    this.peopleCache = await org.request<Person[]>("GET", "/people");
+    return this.peopleCache;
   }
 
   /**

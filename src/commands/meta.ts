@@ -16,11 +16,39 @@ import {
 
 const CATEGORY = "Meta";
 
-function skillSourcePath(): string {
-  // dist/commands/meta.js → ../../skills/thicket-cli/SKILL.md (also correct
-  // from src/ in dev).
+/** The package root: dist/commands/meta.js → ../.. (also correct from src/ in dev). */
+export function packageRoot(): string {
   const here = dirname(fileURLToPath(import.meta.url));
-  return join(here, "..", "..", "skills", "thicket-cli", "SKILL.md");
+  return join(here, "..", "..");
+}
+
+/** The skills this package ships, by directory name under skills/. */
+export function packagedSkills(): string[] {
+  return ["thicket-cli", "thicket-connect"];
+}
+
+export function skillSourcePath(name = "thicket-cli"): string {
+  return join(packageRoot(), "skills", name, "SKILL.md");
+}
+
+/** Copies every packaged skill into <dir>/<name>/SKILL.md. */
+export function installSkills(dir: string, only?: string[]): { name: string; path: string }[] {
+  const installed: { name: string; path: string }[] = [];
+  for (const name of packagedSkills()) {
+    if (only?.length && !only.includes(name)) continue;
+    let text: string;
+    try {
+      text = readFileSync(skillSourcePath(name), "utf8");
+    } catch {
+      throw new CliError("api", `The packaged skill ${name} is missing from this install`);
+    }
+    const target = join(dir, name);
+    mkdirSync(target, { recursive: true });
+    const dest = join(target, "SKILL.md");
+    writeFileSync(dest, text);
+    installed.push({ name, path: dest });
+  }
+  return installed;
 }
 
 export function metaCommands(
@@ -74,12 +102,17 @@ export function metaCommands(
     {
       path: ["skill"],
       category: CATEGORY,
-      summary: "Print the agent skill that teaches this CLI",
-      notes: ["Install it for Claude Code with: thicket skill install"],
-      handler: async (): Promise<CommandResult> => {
-        const text = readFileSync(skillSourcePath(), "utf8");
+      summary: "Print an agent skill this package ships (default: thicket-cli)",
+      args: [{ name: "name", description: `Which skill: ${packagedSkills().join(" or ")}` }],
+      notes: ["Install them for Claude Code with: thicket skill install (or thicket setup claude)"],
+      handler: async (_ctx, args): Promise<CommandResult> => {
+        const name = args[0] ?? "thicket-cli";
+        if (!packagedSkills().includes(name)) {
+          throw new CliError("usage", `No packaged skill named "${name}"`, `One of: ${packagedSkills().join(", ")}`);
+        }
+        const text = readFileSync(skillSourcePath(name), "utf8");
         return {
-          data: { skill: text },
+          data: { name, skill: text },
           human: [text],
         };
       },
@@ -87,32 +120,27 @@ export function metaCommands(
     {
       path: ["skill", "install"],
       category: CATEGORY,
-      summary: "Install the agent skill for Claude Code (~/.claude/skills)",
+      summary: "Install the packaged skills for Claude Code (~/.claude/skills/<name>)",
       flags: [
         {
           flag: "--dir <path>",
-          description: "Install somewhere else (default: ~/.claude/skills/thicket-cli)",
+          description: "Skills directory (default: ~/.claude/skills)",
         },
+        { flag: "--only <name>", description: "Install just one skill (thicket-cli or thicket-connect)" },
       ],
       handler: async (_ctx, _args, options): Promise<CommandResult> => {
-        let text: string;
-        try {
-          text = readFileSync(skillSourcePath(), "utf8");
-        } catch {
-          throw new CliError("api", "The packaged skill file is missing from this install");
+        const dir = options.dir ? String(options.dir) : join(homedir(), ".claude", "skills");
+        const installed = installSkills(dir, options.only ? [String(options.only)] : undefined);
+        if (installed.length === 0) {
+          throw new CliError("usage", `No packaged skill named "${String(options.only)}"`, `One of: ${packagedSkills().join(", ")}`);
         }
-        const dir = options.dir
-          ? String(options.dir)
-          : join(homedir(), ".claude", "skills", "thicket-cli");
-        mkdirSync(dir, { recursive: true });
-        const dest = join(dir, "SKILL.md");
-        writeFileSync(dest, text);
         return {
-          data: { installed: dest },
-          summary: `Skill installed at ${dest}`,
+          data: { installed },
+          summary: `Installed ${installed.map((i) => i.name).join(", ")} under ${dir}`,
           human: [
-            `${pc.green("Installed.")} ${dest}`,
-            "Claude Code picks it up automatically; other agents can be pointed at the file.",
+            ...installed.map((i) => `${pc.green("Installed.")} ${i.path}`),
+            "Claude Code picks them up automatically; other agents can be pointed at the files.",
+            pc.dim("For the plugin (SessionStart status hook), run: thicket setup claude"),
           ],
         };
       },

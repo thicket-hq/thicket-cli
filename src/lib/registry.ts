@@ -83,6 +83,7 @@ export const GLOBAL_FLAGS: FlagSpec[] = [
   { flag: "--agent", description: "Agent mode: data-only JSON, structured errors, no prompts" },
   { flag: "--ids-only", description: "One id per line" },
   { flag: "--count", description: "Item count only" },
+  { flag: "--jq <filter>", description: "Filter the JSON envelope with jq (implies --json; strings print raw)" },
   { flag: "--base-url <url>", description: "API host override (default: https://www.thickethq.com)" },
   { flag: "--no-color", description: "Disable ANSI colors" },
 ];

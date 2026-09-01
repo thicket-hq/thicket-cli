@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "thicket agent-hook session-start",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
