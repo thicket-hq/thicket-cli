@@ -1,6 +1,8 @@
 // End-to-end through run() with an injected fetch: envelope shapes, output
 // modes, exit codes, catalog parity, agent help. No network, no keyring —
-// tokens ride THICKET_TOKEN and config rides THICKET_CONFIG_DIR.
+// tokens ride THICKET_TOKEN, config rides THICKET_CONFIG_DIR, and
+// THICKET_TOKEN_STORE=file keeps the developer's real keychain login out of
+// every run (a signed-in machine must not change what these tests see).
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -62,6 +64,7 @@ async function exec(
   const err: string[] = [];
   const env: NodeJS.ProcessEnv = {
     THICKET_CONFIG_DIR: mkdtempSync(join(tmpdir(), "thicket-cli-run-")),
+    THICKET_TOKEN_STORE: "file",
     THICKET_TOKEN: "thicket_pat_test",
     THICKET_BASE_URL: "http://localhost:9999",
     ...envExtra,

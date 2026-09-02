@@ -5,7 +5,7 @@ import { hostname } from "node:os";
 import { createInterface } from "node:readline";
 import pc from "picocolors";
 import { openBrowser } from "../lib/browser.js";
-import { updateProfile } from "../lib/config.js";
+import { credentialsPath, updateProfile } from "../lib/config.js";
 import { userAgent, VERSION, type CliContext } from "../lib/context.js";
 import {
   deleteStoredToken,
@@ -115,20 +115,20 @@ async function login(
     scope: string;
   };
 
-  const store = await storeToken(profile, token);
+  const store = await storeToken(profile, token, ctx.env);
   if (ctx.settings.baseUrl !== "https://www.thickethq.com") {
-    updateProfile(profile, { base_url: ctx.settings.baseUrl });
+    updateProfile(profile, { base_url: ctx.settings.baseUrl }, ctx.env);
   }
   const orgs = doc.organizations;
   if (orgs.length === 1) {
-    updateProfile(profile, { org: orgs[0].slug });
+    updateProfile(profile, { org: orgs[0].slug }, ctx.env);
   }
   const storeLabel =
     store === "keychain"
       ? "the macOS Keychain"
       : store === "secret-service"
         ? "the system keyring"
-        : "~/.config/thicket/credentials.json";
+        : credentialsPath(ctx.env);
   return {
     data: {
       profile,
@@ -155,8 +155,8 @@ async function login(
 
 async function logout(ctx: CliContext): Promise<CommandResult> {
   const { profile, baseUrl } = ctx.settings;
-  const had = await getStoredToken(profile);
-  await deleteStoredToken(profile);
+  const had = await getStoredToken(profile, ctx.env);
+  await deleteStoredToken(profile, ctx.env);
   return {
     data: { profile, removed: !!had },
     summary: had

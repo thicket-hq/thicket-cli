@@ -1,6 +1,6 @@
 {
   "name": "thicket-cli",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Official command-line interface for Thicket (thickethq.com): projects, to-dos, messages, docs and files, boards, chat, search, reports, notifications, cheers, and the local agent connector, from your terminal or through AI agents.",
   "keywords": [
     "thicket",
@@ -20,7 +20,7 @@
   "homepage": "https://github.com/thicket-hq/thicket-cli#readme",
   "type": "module",
   "bin": {
-    "thicket": "./dist/index.js"
+    "thicket": "dist/index.js"
   },
   "files": [
     "dist",
@@ -46,7 +46,7 @@
     "jq-wasm": "3.0.0-jq-1.8.2",
     "marked": "18.0.11",
     "picocolors": "^1.1.0",
-    "thicket-sdk": "^0.1.1"
+    "thicket-sdk": "^0.3.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

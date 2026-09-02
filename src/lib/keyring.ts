@@ -2,17 +2,37 @@
 // Secret Service via `secret-tool`), falling back to a chmod-600
 // credentials.json in the config directory. No native modules — the keyring
 // is reached by shelling out with execFile (never a shell), which keeps the
-// package pure JS and installable everywhere.
+// package pure JS and installable everywhere. THICKET_TOKEN_STORE=file skips
+// the OS keyring entirely (containers, CI, sandboxed test runs): every
+// profile's token then lives only in the config directory's credentials.json.
 import { execFile } from "node:child_process";
 import { platform } from "node:os";
 import { promisify } from "node:util";
 import { readFileToken, writeFileToken } from "./config.js";
+import { CliError } from "./output.js";
 
 const run = promisify(execFile);
 
 const SERVICE = "thicket-cli";
 
 export type TokenStore = "keychain" | "secret-service" | "file" | "env";
+
+export type TokenStoreMode = "auto" | "file";
+
+/**
+ * Where tokens may live, from THICKET_TOKEN_STORE: "auto" (the OS keyring,
+ * then the credentials file) or "file" (the credentials file only).
+ */
+export function tokenStoreMode(env: NodeJS.ProcessEnv = process.env): TokenStoreMode {
+  const raw = env.THICKET_TOKEN_STORE?.trim().toLowerCase();
+  if (!raw || raw === "auto") return "auto";
+  if (raw === "file") return "file";
+  throw new CliError(
+    "usage",
+    `THICKET_TOKEN_STORE must be "auto" or "file" (got "${raw}")`,
+    "Unset it, or set THICKET_TOKEN_STORE=file to keep tokens out of the OS keyring",
+  );
+}
 
 async function darwinGet(profile: string): Promise<string | null> {
   try {
@@ -117,15 +137,18 @@ async function linuxDelete(profile: string): Promise<void> {
  */
 export async function getStoredToken(
   profile: string,
+  env: NodeJS.ProcessEnv = process.env,
 ): Promise<{ token: string; store: TokenStore } | null> {
-  if (platform() === "darwin") {
-    const token = await darwinGet(profile);
-    if (token) return { token, store: "keychain" };
-  } else if (platform() === "linux") {
-    const token = await linuxGet(profile);
-    if (token) return { token, store: "secret-service" };
+  if (tokenStoreMode(env) === "auto") {
+    if (platform() === "darwin") {
+      const token = await darwinGet(profile);
+      if (token) return { token, store: "keychain" };
+    } else if (platform() === "linux") {
+      const token = await linuxGet(profile);
+      if (token) return { token, store: "secret-service" };
+    }
   }
-  const fileToken = readFileToken(profile);
+  const fileToken = readFileToken(profile, env);
   return fileToken ? { token: fileToken, store: "file" } : null;
 }
 
@@ -133,23 +156,31 @@ export async function getStoredToken(
 export async function storeToken(
   profile: string,
   token: string,
+  env: NodeJS.ProcessEnv = process.env,
 ): Promise<TokenStore> {
-  if (platform() === "darwin" && (await darwinSet(profile, token))) {
-    // A stale file copy must not shadow later keyring updates.
-    writeFileToken(profile, null);
-    return "keychain";
+  if (tokenStoreMode(env) === "auto") {
+    if (platform() === "darwin" && (await darwinSet(profile, token))) {
+      // A stale file copy must not shadow later keyring updates.
+      writeFileToken(profile, null, env);
+      return "keychain";
+    }
+    if (platform() === "linux" && (await linuxSet(profile, token))) {
+      writeFileToken(profile, null, env);
+      return "secret-service";
+    }
   }
-  if (platform() === "linux" && (await linuxSet(profile, token))) {
-    writeFileToken(profile, null);
-    return "secret-service";
-  }
-  writeFileToken(profile, token);
+  writeFileToken(profile, token, env);
   return "file";
 }
 
 /** Removes the stored token from every store. */
-export async function deleteStoredToken(profile: string): Promise<void> {
-  if (platform() === "darwin") await darwinDelete(profile);
-  if (platform() === "linux") await linuxDelete(profile);
-  writeFileToken(profile, null);
+export async function deleteStoredToken(
+  profile: string,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<void> {
+  if (tokenStoreMode(env) === "auto") {
+    if (platform() === "darwin") await darwinDelete(profile);
+    if (platform() === "linux") await linuxDelete(profile);
+  }
+  writeFileToken(profile, null, env);
 }

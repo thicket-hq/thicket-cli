@@ -49,7 +49,8 @@ export type Person = {
 
 export class CliContext {
   readonly settings: ResolvedSettings;
-  private env: NodeJS.ProcessEnv;
+  /** The environment this invocation resolves against (injected in tests). */
+  readonly env: NodeJS.ProcessEnv;
   private fetchImpl?: typeof globalThis.fetch;
   private sdkInstance: Thicket | null = null;
   private tokenInfo: { token: string; store: TokenStore } | null | undefined;
@@ -73,7 +74,7 @@ export class CliContext {
     const envToken = this.env.THICKET_TOKEN?.trim();
     this.tokenInfo = envToken
       ? { token: envToken, store: "env" }
-      : await getStoredToken(this.settings.profile);
+      : await getStoredToken(this.settings.profile, this.env);
     return this.tokenInfo;
   }
 

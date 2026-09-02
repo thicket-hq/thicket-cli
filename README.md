@@ -63,7 +63,7 @@ thicket auth token               # print the token for scripts
 thicket auth logout              # remove the stored token from this machine
 ```
 
-Headless environments: `printf '%s' "$TOKEN" | thicket auth login --with-token`, or set `THICKET_TOKEN` per process. Revoke any token from My settings, API tokens; revocation is immediate.
+Headless environments: `printf '%s' "$TOKEN" | thicket auth login --with-token`, or set `THICKET_TOKEN` per process. Set `THICKET_TOKEN_STORE=file` to keep stored tokens in the config directory's chmod-600 `credentials.json` instead of the OS keyring (containers, CI, sandboxed runs). Revoke any token from My settings, API tokens; revocation is immediate.
 
 ### Profiles and organizations
 
