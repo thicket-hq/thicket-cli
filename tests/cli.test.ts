@@ -202,6 +202,31 @@ describe("writes through the fake transport", () => {
   });
 });
 
+describe("reports", () => {
+  it("health unwraps the report's gauges and lists who moved each one", async () => {
+    const { code, out } = await exec(["reports", "health"], {
+      "GET /api/v1/acme/reports/health": {
+        gauges: [
+          {
+            project_id: PROJECTS[0].id,
+            project_name: "Website",
+            status: "on_track",
+            position: 72,
+            updated_at: "2026-09-18T14:27:24.830Z",
+            updated_by: "Sarah Chen",
+          },
+        ],
+      },
+    });
+    expect(code).toBe(0);
+    const envelope = JSON.parse(out.join("\n"));
+    expect(envelope.ok).toBe(true);
+    expect(envelope.data).toHaveLength(1);
+    expect(envelope.data[0].project_name).toBe("Website");
+    expect(envelope.summary).toBe("1 project gauge");
+  });
+});
+
 describe("self-description", () => {
   it("commands --json emits the full catalog", async () => {
     const { code, out } = await exec(["commands", "--json"]);

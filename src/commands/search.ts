@@ -275,19 +275,25 @@ async function reportHealth(ctx: CliContext): Promise<CommandResult> {
     project_name: string;
     status: string;
     position: number;
-    updated_at?: string;
+    updated_at: string | null;
+    updated_by: string | null;
   };
-  const rows = await org.request<Gauge[]>("GET", "/reports/health");
+  // The report wraps its rows: GET /reports/health answers {gauges: [...]}.
+  const { gauges: rows } = await org.request<{ gauges: Gauge[] }>(
+    "GET",
+    "/reports/health",
+  );
   return {
     data: rows,
     summary: `${rows.length} project gauge${rows.length === 1 ? "" : "s"}`,
     human: table(
-      ["PROJECT", "STATUS", "%", "UPDATED"],
+      ["PROJECT", "STATUS", "%", "UPDATED", "BY"],
       rows.map((g) => [
         clip(g.project_name, 32),
         g.status,
         String(g.position),
         day(g.updated_at),
+        clip(g.updated_by ?? "", 24),
       ]),
     ),
   };

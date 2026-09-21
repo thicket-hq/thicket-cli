@@ -1,6 +1,6 @@
 {
   "name": "thicket",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Thicket (thickethq.com) from Claude Code: the thicket CLI skill, the agent connector skill, and a session-start status line.",
   "author": {
     "name": "Vesperion Gate Inc.",
