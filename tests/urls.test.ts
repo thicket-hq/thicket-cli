@@ -24,6 +24,7 @@ describe("parseThicketUrl", () => {
       [`/projects/${P}/todos/${A}/${B}`, "todo", B, A],
       [`/projects/${P}/todos/progress/${A}`, "progress_update", A, null],
       [`/projects/${P}/health/${A}`, "health_update", A, null],
+      [`/projects/${P}/timesheet/${A}`, "timesheet", A, null],
       [`/projects/${P}/calendar/${A}`, "calendar_event", A, null],
       [`/projects/${P}/cards/${A}`, "card", A, null],
       [`/projects/${P}/cards/columns/${A}`, "column", A, null],
@@ -50,6 +51,15 @@ describe("parseThicketUrl", () => {
     expect(parseThicketUrl(`${HOST}/o/${ORG}/projects/${P}/cards/${A}?x=1#comment-${B}`)).toMatchObject({ recording_id: A, comment_id: B });
     expect(parseThicketUrl(`/o/${ORG}/projects/${P}/todos/${A}/${B}#comment-${A}`)).toMatchObject({ recording_id: B, comment_id: A });
     expect(parseThicketUrl(`http://localhost:3003/o/${ORG}/projects/${P}`)).toMatchObject({ project_id: P, recording_id: null, type: null });
+  });
+
+  it("reads a repeating event's day and the project's timesheet page", () => {
+    expect(parseThicketUrl(`${HOST}/o/${ORG}/projects/${P}/calendar/${A}?occurrence=2026-09-22`)).toMatchObject({ type: "calendar_event", recording_id: A, occurrence: "2026-09-22" });
+    expect(parseThicketUrl(`/o/${ORG}/calendar/${A}?occurrence=2026-09-22#comment-${B}`)).toMatchObject({ recording_id: A, occurrence: "2026-09-22", comment_id: B });
+    expect(parseThicketUrl(`${HOST}/o/${ORG}/projects/${P}/calendar/${A}?occurrence=soon`)?.occurrence).toBeNull();
+    expect(parseThicketUrl(`${HOST}/o/${ORG}/projects/${P}/cards/${A}`)?.occurrence).toBeNull();
+    expect(parseThicketUrl(`${HOST}/o/${ORG}/projects/${P}/timesheet`)).toMatchObject({ project_id: P, type: "timesheet", recording_id: null });
+    expect(recordingPath(ORG, { id: A, type: "timesheet", project_id: P })).toBe(`/o/${ORG}/projects/${P}/timesheet`);
   });
 
   it("round-trips through recordingPath for every type", () => {

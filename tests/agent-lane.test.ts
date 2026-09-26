@@ -218,7 +218,7 @@ describe("people and agents", () => {
 describe("URLs, threads, and chat lines", () => {
   it("url parse explains a link; show accepts a URL and adopts its org", async () => {
     const parsed = await exec(["url", "parse", `https://www.thickethq.com/o/beta/projects/${PROJECT}/todos/${NOTE}/${REC}#comment-${LINE}`]);
-    expect(parsed.envelope.data).toEqual({ org: "beta", project_id: PROJECT, recording_id: REC, type: "todo", parent_id: NOTE, comment_id: LINE });
+    expect(parsed.envelope.data).toEqual({ org: "beta", project_id: PROJECT, recording_id: REC, type: "todo", parent_id: NOTE, comment_id: LINE, occurrence: null });
     const shown = await exec(["show", `https://www.thickethq.com/o/beta/projects/${PROJECT}/cards/${REC}`], {
       [`GET /api/v1/beta/recordings/${REC}`]: { id: REC, type: "card", title: "Card", project_id: PROJECT, parent_id: null },
     });

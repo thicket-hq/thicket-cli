@@ -1,6 +1,6 @@
 # Thicket CLI
 
-`thicket` is the official command-line interface for [Thicket](https://www.thickethq.com). Manage projects, to-dos, messages, docs and files, boards, chat, notifications, and cheers from your terminal or through AI agents, and run the local agent connector that turns an @mention in Thicket into work on your machine.
+`thicket` is the official command-line interface for [Thicket](https://www.thickethq.com). Manage projects, to-dos, messages, docs and files, boards, chat, timesheets, notifications, and cheers from your terminal or through AI agents, and run the local agent connector that turns an @mention in Thicket into work on your machine.
 
 - Works standalone or with any AI agent that can run shell commands
 - JSON envelope with breadcrumbs, `--jq` filtering, structured errors with stable exit codes and a `retryable` flag
@@ -30,6 +30,7 @@ thicket comment <id> "Done, @Jane"  # comment on anything (Markdown, mentions)
 thicket show https://www.thickethq.com/o/acme/projects/<id>/cards/<id>
 thicket search "launch checklist"  # search across projects
 thicket assignments                # your open work
+thicket timesheet log <id> --hours 1.5   # log time on a to-do (or any item)
 thicket inbox --unread             # your notifications
 ```
 
@@ -49,7 +50,7 @@ thicket projects --jq '.data[].name'   # filter the envelope with jq (strings pr
 
 Every success envelope can carry `breadcrumbs`, suggested next commands, so humans and agents can walk the resource graph without prior knowledge. `--jq` runs real jq (jq 1.8 compiled to WebAssembly, no native dependency) over the envelope and implies `--json`; each output is one line, strings raw, everything else compact JSON.
 
-Errors are always structured: `{ok: false, error, code, retryable, hint}` with stable exit codes (usage 2, validation 3, auth 4, forbidden 5, not_found 6, rate_limit 7, network 8, ambiguous 9, plan_limit 10). `retryable` is true for network failures, timeouts, 429 (with `retry_after` seconds when the server said) and 5xx; every other code is a verdict, and repeating the call repeats the answer.
+Errors are always structured: `{ok: false, error, code, retryable, hint, api_code}` with stable exit codes (usage 2, validation 3, auth 4, forbidden 5, not_found 6, rate_limit 7, network 8, ambiguous 9, plan_limit 10). `retryable` is true for network failures, timeouts, 429 (with `retry_after` seconds when the server said) and 5xx; every other code is a verdict, and repeating the call repeats the answer. `api_code` is the server's own code when it sent one, for branching on a specific refusal (`daily_cap`, `approvals_off`, `week_state`).
 
 ## Authentication
 
@@ -87,7 +88,7 @@ thicket docs create "Spec" --content - --in Website < spec.md
 
 ## URLs
 
-Anything that takes a recording id also takes the item's link from the app (`https://www.thickethq.com/o/<org>/projects/<id>/cards/<id>`, and every other shape the app builds). A link names its organization, so it also sets `--org` for that call. `thicket url parse <url>` shows what a link points at (`{org, project_id, recording_id, type, parent_id, comment_id}`), `thicket url of <id>` gives the link (and a titled Markdown link) for an id, and `thicket show` responses carry `web_url`.
+Anything that takes a recording id also takes the item's link from the app (`https://www.thickethq.com/o/<org>/projects/<id>/cards/<id>`, and every other shape the app builds). A link names its organization, so it also sets `--org` for that call. `thicket url parse <url>` shows what a link points at (`{org, project_id, recording_id, type, parent_id, comment_id, occurrence}`; `occurrence` is a repeating event's day from `?occurrence=`), `thicket url of <id>` gives the link (and a titled Markdown link) for an id, and `thicket show` responses carry `web_url`.
 
 ## Notifications and cheers
 
@@ -105,6 +106,30 @@ thicket subscriptions show|add|remove <id|url>   # follow a thread, watch a colu
 ```
 
 Notification rows carry `actor_membership_id`, `actor_role`, `actor_kind`, and for agent recipients the server's trust verdicts `from_operator` and `directive`. `--watch` consumes the Server-Sent Events stream, ignores pings, reconnects with backoff on `event: reconnect` or a dropped connection using the last cursor, falls back to polling (with `presence=true`) when the stream is not offered, and stops cleanly on Ctrl-C. `thicket comments thread <id|url>` prints a whole thread (the recording's text plus every comment, oldest first) with each author's membership id and mention token.
+
+## Timesheets
+
+```bash
+thicket timesheet                          # your week: hours per row and day, the total, the approval status
+thicket timesheet log <id|url> --hours 1.5 # time on a to-do, message, doc, file, card or event (today by default)
+thicket timesheet log <event-url> --occurrence 2026-09-22 --hours 1   # one day of a repeating event
+thicket timesheet log --project Website --hours 0.5 --date yesterday --notes "Planning"
+thicket timesheet log --absence Vacation --hours 8 --date 2026-10-02
+thicket timesheet edit <entry-id> --hours 1:45        # also --date, --notes ("" clears), --person
+thicket timesheet delete <entry-id> --yes             # permanent: an entry has no trash
+thicket timesheet report --from 2026-09-01 --to 2026-09-30 --project Website
+thicket timesheet report --csv > timesheet.csv        # the export itself (default range: the last month)
+thicket timesheet absence-types                       # Vacation, Sick leave, ... (--all adds archived ones)
+
+thicket timesheet submit --week 2026-09-24            # submit the week holding that day for approval
+thicket timesheet approvals                           # owners and admins: the week, and every week waiting on you
+thicket timesheet approve <person> <week-start>
+thicket timesheet reject <person> <week-start> --reason "Tuesday is missing the client call"
+```
+
+Hours are `1.5` or `1:30`, and nobody logs more than 24 hours on one day (the refusal carries `api_code: daily_cap`). Owners and admins log, edit, and submit for someone else with `--person`. A project's Timesheet has to be switched on in its settings, and timesheets are team only: clients get `not_found` from every one of these commands. `--csv` prints the report's export itself (`Date,Person,Hours,Project,Item,Notes,Created`, plus `Status` while approvals are on) in every output mode, with no envelope around it; errors stay structured on stderr.
+
+Approvals are an admin setting, off by default. While they are on, `submit` records a week, and an owner or admin approves it or rejects it with a reason that reaches the person. Nothing ever locks: a change after submitting or approving reads Changed until the week is resubmitted or approved again, and the report shows approved hours unless `--status` says otherwise.
 
 ## People and AI agents
 

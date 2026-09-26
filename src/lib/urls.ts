@@ -13,6 +13,8 @@ export type ParsedUrl = {
   parent_id: string | null;
   /** From a #comment-<id> fragment. */
   comment_id: string | null;
+  /** A repeating event's day, from ?occurrence=YYYY-MM-DD. */
+  occurrence: string | null;
 };
 
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
@@ -30,19 +32,24 @@ export function looksLikeUrl(value: string): boolean {
 export function parseThicketUrl(value: string): ParsedUrl | null {
   let path: string;
   let hash = "";
+  let search: URLSearchParams;
   try {
     if (value.trim().startsWith("/o/")) {
       const [p, h] = value.trim().split("#");
-      path = p.split("?")[0];
+      const [pathname, query] = p.split("?");
+      path = pathname;
+      search = new URLSearchParams(query ?? "");
       hash = h ?? "";
     } else {
       const url = new URL(value.trim());
       path = url.pathname;
+      search = url.searchParams;
       hash = url.hash.replace(/^#/, "");
     }
   } catch {
     return null;
   }
+  const occurrence = search.get("occurrence");
   const segs = path.split("/").filter(Boolean).map(decodeURIComponent);
   if (segs[0] !== "o" || !segs[1]) return null;
   const org = segs[1];
@@ -54,6 +61,7 @@ export function parseThicketUrl(value: string): ParsedUrl | null {
     type: null,
     parent_id: null,
     comment_id: commentMatch ? commentMatch[1] : null,
+    occurrence: occurrence && /^\d{4}-\d{2}-\d{2}$/.test(occurrence) ? occurrence : null,
   };
   const rest = segs.slice(2);
 
@@ -96,6 +104,9 @@ export function parseThicketUrl(value: string): ParsedUrl | null {
       return isUuid(a) ? rec("todolist", a) : { ...withProject, type: "todos" };
     case "health":
       return isUuid(a) ? rec("health_update", a) : { ...withProject, type: "health" };
+    case "timesheet":
+      // The project's timesheet, or one item's (the id is the item's).
+      return isUuid(a) ? rec("timesheet", a) : { ...withProject, type: "timesheet" };
     case "calendar":
       return isUuid(a) ? rec("calendar_event", a) : { ...withProject, type: "calendar" };
     case "cards":
@@ -159,6 +170,8 @@ export function recordingPath(org: string, rec: Linkable): string {
       return `${base}/health`;
     case "health_update":
       return `${base}/health/${rec.id}`;
+    case "timesheet":
+      return `${base}/timesheet`;
     case "calendar":
       return `${base}/calendar`;
     case "calendar_event":

@@ -3,8 +3,8 @@ name: thicket-cli
 description: |
   Work in Thicket (thickethq.com) through the `thicket` CLI: projects,
   to-dos, messages, docs and files, boards, chat, search, reports,
-  notifications, cheers, people and AI agents. Prefer this over raw API
-  calls whenever the CLI is installed.
+  timesheets, notifications, cheers, people and AI agents. Prefer this over
+  raw API calls whenever the CLI is installed.
 triggers:
   - thicket
   - /thicket
@@ -13,6 +13,7 @@ triggers:
   - post to the message board
   - move the card
   - thicket inbox
+  - log time in thicket
 invocable: true
 argument-hint: "[command] [args...]"
 ---
@@ -44,9 +45,10 @@ reference: https://www.thickethq.com/developers/api
    reads anything and returns `web_url`; `thicket comment <id|url> "text"`
    comments on anything (comments are flat, always on the parent, never on
    a comment); `thicket trash|archive|restore <id>` is the one lifecycle.
-   Trash is what "delete" means: recoverable for 30 days. Nothing in this
-   CLI hard-deletes. Any thickethq.com URL works where an id is expected;
-   `thicket url parse <url>` explains one.
+   Trash is what "delete" means: recoverable for 30 days. The one hard
+   delete is `thicket timesheet delete <entry-id> --yes`: a time entry has
+   no trash, so confirm with your user first. Any thickethq.com URL works
+   where an id is expected; `thicket url parse <url>` explains one.
 5. **Bodies are Markdown; mentions are tokens.** `--content`, `--notes`,
    comment text, and chat text convert Markdown to rich text (headings,
    emphasis, lists, titled links, code, blockquotes, GFM tables). Raw HTML
@@ -62,7 +64,9 @@ reference: https://www.thickethq.com/developers/api
    only when `retryable` is true (network, timeout, rate_limit with
    `retry_after`, 5xx); anything else is a verdict. On `ambiguous`, re-run
    with the exact name or id from the message. On `plan_limit`, stop and
-   tell the user.
+   tell the user. `api_code` is the server's own code when it sent one
+   (`daily_cap`, `approvals_off`, `week_state`); the `hint` says what to run
+   next.
 7. **Writes are attributed to the signed-in identity.** Act only as
    instructed; before destructive bulk work, list first and confirm with
    your user. An AI agent's replies post under its own profile
@@ -104,6 +108,19 @@ thicket reports overdue                  # everyone's late work
 thicket reports upcoming --from today --to +14
 thicket activity --project Website       # what happened
 
+thicket timesheet                        # my week: hours per row and day, total, approval status
+thicket timesheet log <id|url> --hours 1.5 --date yesterday --notes "Review"
+thicket timesheet log --project Website --hours 0.5   # time on the project itself
+thicket timesheet log --absence Vacation --hours 8 --date 2026-10-02
+thicket timesheet edit <entry-id> --hours 1:45        # --date, --notes ("" clears), --person
+thicket timesheet delete <entry-id> --yes             # permanent; confirm with your user first
+thicket timesheet report --from 2026-09-01 --to 2026-09-30 --person Jane
+thicket timesheet report --csv > timesheet.csv        # the export itself, no envelope
+thicket timesheet submit --week 2026-09-24            # while approvals are on
+thicket timesheet approvals                           # owners and admins: who is waiting
+thicket timesheet approve <person> <week-start>       # reject needs --reason "..."
+thicket timesheet absence-types
+
 thicket inbox --unread                   # notifications (alias: thicket notifications)
 thicket notifications --since <iso> --after <id>   # cursor reads; next_cursor in the response
 thicket notifications read <id> | --all
@@ -123,7 +140,9 @@ thicket url parse <url>                  # {org, project_id, recording_id, type}
 ## Dates and people
 
 Date flags accept natural language: `today`, `tomorrow`, `friday`,
-`next monday`, `+3`, `in 2 weeks`, `eow`, `eom`, or `YYYY-MM-DD`.
+`next monday`, `+3`, `in 2 weeks`, `eow`, `eom`, or `YYYY-MM-DD`. A bare
+weekday is the coming one; for logged time look back with `yesterday`,
+`last friday`, `-2` (two days ago), or `last week`.
 People flags accept `me`, a name (fuzzy), an email, or a membership id.
 
 ## Output modes

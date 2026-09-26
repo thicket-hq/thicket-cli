@@ -32,4 +32,13 @@ describe("parseDate", () => {
     expect(parseDate("mon", NOW)).toBe("2026-08-24");
     expect(parseDate("next friday", NOW)).toBe("2026-08-28");
   });
+
+  it("looking back: last <weekday>, -N, last week", () => {
+    expect(parseDate("last friday", NOW)).toBe("2026-08-14");
+    expect(parseDate("last tuesday", NOW)).toBe("2026-08-18");
+    expect(parseDate("last wednesday", NOW)).toBe("2026-08-12"); // never today
+    expect(parseDate("-2", NOW)).toBe("2026-08-17");
+    expect(parseDate("last week", NOW)).toBe("2026-08-12");
+    expect(parseDate("last month", NOW)).toBe("last month");
+  });
 });

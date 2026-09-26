@@ -14,6 +14,8 @@ export type RecordingRef = {
   org: string | null;
   type: string | null;
   projectId: string | null;
+  /** A repeating event's day, when a URL named one (?occurrence=). */
+  occurrence: string | null;
 };
 
 /**
@@ -24,7 +26,7 @@ export type RecordingRef = {
 export function resolveRecordingRef(ctx: CliContext, ref: string): RecordingRef {
   const value = ref.trim();
   if (looksLikeId(value)) {
-    return { id: value, commentId: null, org: null, type: null, projectId: null };
+    return { id: value, commentId: null, org: null, type: null, projectId: null, occurrence: null };
   }
   if (looksLikeUrl(value)) {
     const parsed = parseThicketUrl(value);
@@ -45,6 +47,7 @@ export function resolveRecordingRef(ctx: CliContext, ref: string): RecordingRef 
       org: parsed.org,
       type: parsed.type,
       projectId: parsed.project_id,
+      occurrence: parsed.occurrence,
     };
   }
   throw new CliError("usage", `Not a recording id or URL: ${value}`);

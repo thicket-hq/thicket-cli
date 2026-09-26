@@ -19,6 +19,7 @@ import { recordingCommands } from "./commands/recordings.js";
 import { searchCommands } from "./commands/search.js";
 import { setupCommands } from "./commands/setup.js";
 import { subscriptionCommands } from "./commands/subscriptions.js";
+import { timesheetCommands } from "./commands/timesheet.js";
 import { todoCommands } from "./commands/todos.js";
 import { urlCommands } from "./commands/url.js";
 import { CliContext, VERSION } from "./lib/context.js";
@@ -51,6 +52,7 @@ export function allCommands(): CommandSpec[] {
     ...cheerCommands,
     ...subscriptionCommands,
     ...peopleCommands,
+    ...timesheetCommands,
     ...agentCommands,
     ...urlCommands,
     ...apiCommands,

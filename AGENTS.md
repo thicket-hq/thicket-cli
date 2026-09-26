@@ -5,9 +5,10 @@ This is the official Thicket CLI (`thicket`), a thin presentation layer over the
 ## Architecture
 
 - **One declarative registry.** Every command is a `CommandSpec` (`src/lib/registry.ts`) in a `src/commands/*.ts` module, wired in `src/cli.ts`. The commander tree, `thicket commands --json`, and `--agent --help` are all generated from the same specs, so the catalog cannot drift from reality. Never add a command outside the registry.
-- **One envelope.** Success is `{ok: true, data, summary?, notice?, breadcrumbs?}`; failure is `{ok: false, error, code, retryable, hint?, retry_after?}` with the exit codes in `src/lib/output.ts`. Handlers return a `CommandResult`; they never print (long-running streams are the exception: they write NDJSON to stdout and return `silent: true`).
+- **One envelope.** Success is `{ok: true, data, summary?, notice?, breadcrumbs?}`; failure is `{ok: false, error, code, retryable, hint?, retry_after?, api_code?}` with the exit codes in `src/lib/output.ts` (`api_code` is the server's own error code, when it sent one). Handlers return a `CommandResult`; they never print (long-running streams are the exception: they write NDJSON to stdout and return `silent: true`). An export (the timesheet CSV) returns its text as `raw`, which every output mode prints verbatim, with no envelope.
 - **Breadcrumbs are the navigation primitive.** Every listing or detail suggests the next commands, so an agent can walk the graph without prior knowledge.
 - **Endpoints the published SDK does not wrap yet** go through `org.request(...)` / `sdk.client.request(...)`, never through hand-rolled fetch (except `rawFetch` for streams and multipart).
+- **Permanent deletes take `--yes`.** Trash is what delete means everywhere else. A command that destroys for good (`timesheet delete`) refuses without `--yes` before any request, with the confirming command as its hint.
 - **Recording references** go through `resolveRecordingRef` (`src/lib/refs.ts`): every id argument accepts an app URL. **Bodies** go through `bodyFields` (`src/lib/markdown.ts`): Markdown to HTML with mentions, `--plain`, `--content-html`, and `-` for stdin via `readBody`.
 - **The connector** (`src/lib/connector.ts`, `src/lib/inbox.ts`) corroborates every event against the API before it prints it. Trust decisions live in `trustVerdict`, a pure function with tests.
 

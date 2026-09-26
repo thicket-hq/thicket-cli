@@ -1,8 +1,9 @@
-// Natural-language dates for --due/--start/--from/--to, matching
+// Natural-language dates for --due/--start/--from/--to/--date, matching
 // common CLI date-parsing behavior: pure function, output always
 // YYYY-MM-DD, unrecognized input passed through unchanged (the API
 // validates). "monday" is the nearest future Monday; "next monday" is the
-// one after that.
+// one after that. Logged time looks back: "last friday" is the most recent
+// Friday before today, "-2" two days ago, "last week" seven days ago.
 
 const WEEKDAYS: Record<string, number> = {
   sunday: 0,
@@ -53,11 +54,14 @@ export function parseDate(input: string, now: Date = new Date()): string {
     return ymd(new Date(now.getFullYear(), now.getMonth() + 1, 0));
   }
   if (raw === "next week") return ymd(addDays(now, 7));
+  if (raw === "last week") return ymd(addDays(now, -7));
   if (raw === "next month") {
     return ymd(new Date(now.getFullYear(), now.getMonth() + 1, now.getDate()));
   }
   const plus = raw.match(/^\+(\d{1,3})$/);
   if (plus) return ymd(addDays(now, Number(plus[1])));
+  const minus = raw.match(/^-(\d{1,3})$/);
+  if (minus) return ymd(addDays(now, -Number(minus[1])));
   const inDays = raw.match(/^in (\d{1,3}) days?$/);
   if (inDays) return ymd(addDays(now, Number(inDays[1])));
   const inWeeks = raw.match(/^in (\d{1,2}) weeks?$/);
@@ -69,6 +73,12 @@ export function parseDate(input: string, now: Date = new Date()): string {
     const target = WEEKDAYS[nextDay[1]];
     const delta = ((target - now.getDay() + 7) % 7) || 7;
     return ymd(addDays(now, delta + 7));
+  }
+  const lastDay = raw.match(/^last ([a-z]+)$/);
+  if (lastDay && WEEKDAYS[lastDay[1]] !== undefined) {
+    // "last friday" = the most recent Friday before today.
+    const delta = ((now.getDay() - WEEKDAYS[lastDay[1]] + 7) % 7) || 7;
+    return ymd(addDays(now, -delta));
   }
   if (WEEKDAYS[raw] !== undefined) {
     const delta = ((WEEKDAYS[raw] - now.getDay() + 7) % 7) || 7;

@@ -1,7 +1,9 @@
 // The output contract, shared by humans and agents:
 // success is `{ok: true, data, summary?, notice?, breadcrumbs?}`, failure is
-// `{ok: false, error, code, hint?}`, and every code maps to a stable exit
-// code. A TTY gets styled output by default; a pipe gets the JSON envelope.
+// `{ok: false, error, code, retryable, hint?, retry_after?, api_code?}`, and
+// every code maps to a stable exit code. A TTY gets styled output by
+// default; a pipe gets the JSON envelope. An export (a CSV) is the one
+// success that is not an envelope: its text is printed as-is.
 import pc from "picocolors";
 import { ThicketError } from "thicket-sdk";
 
@@ -27,6 +29,11 @@ export type CommandResult = {
   ids?: string[];
   /** The command already wrote its output (a long-running stream); render nothing. */
   silent?: boolean;
+  /**
+   * An export's text (a CSV), printed verbatim in every output mode: it is
+   * its own format, so there is no envelope to wrap it in.
+   */
+  raw?: string;
 };
 
 export type CliErrorCode =
@@ -66,17 +73,20 @@ export class CliError extends Error {
   public retryable: boolean;
   /** Seconds to wait before retrying, when the server said. */
   public retryAfter?: number;
+  /** The server's own error code (`daily_cap`, `week_state`, ...), when it sent one. */
+  public apiCode?: string;
 
   constructor(
     public code: CliErrorCode,
     message: string,
     public hint?: string,
-    options: { retryable?: boolean; retryAfter?: number } = {},
+    options: { retryable?: boolean; retryAfter?: number; apiCode?: string } = {},
   ) {
     super(message);
     this.name = "CliError";
     this.retryable = options.retryable ?? RETRYABLE_CODES.has(code);
     this.retryAfter = options.retryAfter;
+    this.apiCode = options.apiCode;
   }
 }
 
@@ -114,6 +124,7 @@ export function fromSdkError(err: ThicketError): CliError {
   return new CliError(code, err.message, hint, {
     retryable,
     retryAfter: err.retryAfter,
+    apiCode: err.apiCode,
   });
 }
 
@@ -172,6 +183,11 @@ export async function renderSuccess(
 ): Promise<number> {
   const { mode, isTty } = target;
   if (result.silent) return 0;
+  if (result.raw !== undefined) {
+    // The trailing newline is the writer's to add.
+    target.write(result.raw.replace(/\r?\n$/, ""));
+    return 0;
+  }
   if (target.jq) {
     // --jq filters the envelope; each jq output is one line, strings raw
     // (gh's convention), everything else compact JSON.
@@ -231,6 +247,7 @@ export function errorEnvelope(err: CliError): Record<string, unknown> {
   };
   if (err.hint) envelope.hint = err.hint;
   if (err.retryAfter !== undefined) envelope.retry_after = err.retryAfter;
+  if (err.apiCode) envelope.api_code = err.apiCode;
   return envelope;
 }
 

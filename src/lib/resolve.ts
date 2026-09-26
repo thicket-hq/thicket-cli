@@ -4,6 +4,7 @@
 // near-matches. `me` resolves through /authorization's membership_id.
 import type { CliContext } from "./context.js";
 import { CliError } from "./output.js";
+import { looksLikeUrl, parseThicketUrl } from "./urls.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -55,11 +56,27 @@ export function matchNamed(
   );
 }
 
+/**
+ * A project by id, name, or app URL: the project's own link or a link to
+ * anything in it (which also sets the org, as every pasted link does).
+ */
 export async function resolveProject(
   ctx: CliContext,
   ref: string,
 ): Promise<{ id: string; name: string }> {
   if (looksLikeId(ref)) return { id: ref, name: ref };
+  if (looksLikeUrl(ref)) {
+    const parsed = parseThicketUrl(ref);
+    if (!parsed?.project_id) {
+      throw new CliError(
+        "usage",
+        `That URL names no project: ${ref}`,
+        "Paste the project's link, or a link to anything in it",
+      );
+    }
+    ctx.adoptOrg(parsed.org);
+    return { id: parsed.project_id, name: parsed.project_id };
+  }
   const org = await ctx.org();
   const projects = await org.projects.list();
   return matchNamed(
