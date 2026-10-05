@@ -1,7 +1,6 @@
 // Auth & identity: the browser hand-off login (no password ever touches the
 // CLI), token storage, status, and org selection.
 import { createHash, randomBytes } from "node:crypto";
-import { hostname } from "node:os";
 import { createInterface } from "node:readline";
 import pc from "picocolors";
 import { openBrowser } from "../lib/browser.js";
@@ -15,37 +14,9 @@ import {
 import { startLoopback } from "../lib/loopback.js";
 import { CliError, table, type CommandResult } from "../lib/output.js";
 import type { CommandSpec } from "../lib/registry.js";
+import { CLI_CLIENT_ID, oauthBaseUrl, parseOAuthCredential, requestOAuthTokens, revokeOAuthConnection, withCredentialLock, type OAuthCredential } from "../lib/oauth.js";
 
 const CATEGORY = "Auth & Config";
-
-async function exchangeCode(
-  baseUrl: string,
-  code: string,
-  verifier: string,
-): Promise<{ token: string; scope: string; name: string }> {
-  const response = await fetch(`${baseUrl}/api/v1/cli/token`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "user-agent": userAgent(),
-    },
-    body: JSON.stringify({ code, code_verifier: verifier }),
-  });
-  const body = (await response.json().catch(() => null)) as {
-    token?: string;
-    scope?: string;
-    name?: string;
-    error?: { message?: string };
-  } | null;
-  if (!response.ok || !body?.token) {
-    throw new CliError(
-      "auth",
-      body?.error?.message ?? `Token exchange failed (HTTP ${response.status})`,
-      "Run: thicket auth login again",
-    );
-  }
-  return { token: body.token, scope: body.scope ?? "read", name: body.name ?? "" };
-}
 
 async function readTokenFromStdin(): Promise<string> {
   if (process.stdin.isTTY) {
@@ -68,41 +39,53 @@ async function login(
   _args: string[],
   options: Record<string, unknown>,
 ): Promise<CommandResult> {
-  const scope = options.scope === "full" ? "full" : "read";
-  const { baseUrl, profile } = ctx.settings;
+  if (options.scope !== "read" && options.scope !== "full") throw new CliError("usage", "Scope must be read or full");
+  const scope = String(options.scope);
+  const { profile } = ctx.settings;
+  const baseUrl = oauthBaseUrl(ctx.settings.baseUrl);
 
   let token: string;
+  let connection: OAuthCredential | undefined;
   if (options.withToken) {
     token = await readTokenFromStdin();
+    if (!token.startsWith("thicket_pat_")) throw new CliError("usage", "--with-token requires a personal access token", "For a browser connection, run: thicket auth login");
   } else {
     const verifier = randomBytes(32).toString("base64url");
     const challenge = createHash("sha256").update(verifier).digest("base64url");
     const state = randomBytes(16).toString("base64url");
-    const { port, result } = await startLoopback(state);
+    const { port, result, close } = await startLoopback(state, undefined, baseUrl);
+    void result.catch(() => {}); // Browser launch can fail before we await the callback.
+    const redirectUri = `http://127.0.0.1:${port}/callback`;
     const authorizeUrl =
-      `${baseUrl}/cli/authorize?` +
+      `${baseUrl}/oauth/authorize?` +
       new URLSearchParams({
-        challenge,
-        port: String(port),
+        client_id: CLI_CLIENT_ID,
+        response_type: "code",
+        redirect_uri: redirectUri,
+        code_challenge: challenge,
+        code_challenge_method: "S256",
         state,
-        scope,
-        device: hostname(),
+        scope: scope === "full" ? "thicket.read thicket.write offline_access" : "thicket.read offline_access",
+        resource: `${baseUrl}/api/v1`,
       }).toString();
-    const opened = await openBrowser(authorizeUrl);
-    process.stderr.write(
-      (opened
-        ? "Waiting for approval in your browser. If nothing opened, visit:\n"
-        : "Open this URL in your browser to approve the sign-in:\n") +
-        `  ${authorizeUrl}\n`,
-    );
-    const { code } = await result;
-    const exchanged = await exchangeCode(baseUrl, code, verifier);
-    token = exchanged.token;
+    try {
+      const opened = await openBrowser(authorizeUrl);
+      process.stderr.write(
+        (opened
+          ? "Waiting for approval in your browser. If nothing opened, visit:\n"
+          : "Open this URL in your browser to approve the sign-in:\n") +
+          `  ${authorizeUrl}\n`,
+      );
+      const { code } = await result;
+      connection = await requestOAuthTokens(baseUrl, { grant_type: "authorization_code", code, code_verifier: verifier, redirect_uri: redirectUri }, userAgent(), ctx.fetch.bind(ctx));
+      token = connection.token;
+    } finally { close(); }
   }
 
   // Validate before storing: a bad paste should fail loudly here, not later.
-  const probe = await fetch(`${baseUrl}/api/v1/authorization`, {
+  const probe = await ctx.fetch(`${baseUrl}/api/v1/authorization`, {
     headers: { authorization: `Bearer ${token}`, "user-agent": userAgent() },
+    signal: AbortSignal.timeout(30_000), redirect: "error",
   });
   if (!probe.ok) {
     throw new CliError(
@@ -115,10 +98,12 @@ async function login(
     scope: string;
   };
 
-  const store = await storeToken(profile, token, ctx.env);
-  if (ctx.settings.baseUrl !== "https://www.thickethq.com") {
-    updateProfile(profile, { base_url: ctx.settings.baseUrl }, ctx.env);
-  }
+  const store = await withCredentialLock(ctx.env, async () => {
+    const previous = await getStoredToken(profile, ctx.env);
+    const store = await storeToken(profile, connection ? JSON.stringify(connection) : token, ctx.env, previous?.store);
+    updateProfile(profile, { base_url: baseUrl }, ctx.env);
+    return store;
+  });
   const orgs = doc.organizations;
   if (orgs.length === 1) {
     updateProfile(profile, { org: orgs[0].slug }, ctx.env);
@@ -132,11 +117,12 @@ async function login(
   return {
     data: {
       profile,
+      authentication: connection ? "oauth" : "personal_access_token",
       scope: doc.scope,
       token_store: store,
       organizations: orgs,
     },
-    summary: `Signed in (${doc.scope} scope). Token stored in ${storeLabel}.`,
+    summary: `Connected (${doc.scope} access). Credentials stored in ${storeLabel}.`,
     human: [
       `${pc.green("Signed in.")} Scope: ${doc.scope}. Token stored in ${storeLabel}.`,
       orgs.length === 1
@@ -155,14 +141,19 @@ async function login(
 
 async function logout(ctx: CliContext): Promise<CommandResult> {
   const { profile, baseUrl } = ctx.settings;
-  const had = await getStoredToken(profile, ctx.env);
-  await deleteStoredToken(profile, ctx.env);
+  const { had, connection } = await withCredentialLock(ctx.env, async () => {
+    const had = await getStoredToken(profile, ctx.env);
+    const connection = had ? parseOAuthCredential(had.token) : null;
+    if (connection) await revokeOAuthConnection(connection, userAgent(), ctx.fetch.bind(ctx));
+    await deleteStoredToken(profile, ctx.env);
+    return { had, connection };
+  });
   return {
     data: { profile, removed: !!had },
     summary: had
       ? `Signed out: the stored token for profile "${profile}" was removed from this machine.`
       : `Nothing stored for profile "${profile}".`,
-    notice: had
+    notice: had && !connection
       ? `The token itself stays valid until revoked: ${baseUrl} → My settings → API tokens`
       : undefined,
     human: [
@@ -366,16 +357,17 @@ async function doctor(ctx: CliContext): Promise<CommandResult> {
 
 const loginSpec: Omit<CommandSpec, "path"> = {
   category: CATEGORY,
-  summary: "Sign in through your browser (mints a personal access token)",
+  summary: "Connect through your browser with OAuth",
   description:
-    "Opens the Thicket app to approve this device; no password ever touches the CLI. The minted token lands in the OS keyring (credentials file fallback). Use --with-token to paste an existing token from stdin instead.",
+    "Approve access in Thicket. Credentials are stored in the OS keyring (credentials file fallback) and refresh automatically. Use --with-token to read a personal access token from stdin for automation.",
   flags: [
-    { flag: "--scope <scope>", description: "Token scope: read (default) or full", default: "read" },
+    { flag: "--scope <scope>", description: "Access: full (default) or read", default: "full" },
     { flag: "--with-token", description: "Read a personal access token from stdin instead of the browser flow" },
   ],
   notes: [
-    "read scope can only GET; pass --scope full for a CLI that writes",
-    "Revoke tokens any time from My settings, API tokens",
+    "Read-and-write access is shown before approval; --scope read requests read-only access",
+    "Disconnect browser connections in My settings, Connected apps, or run thicket auth logout",
+    "Personal access tokens remain managed in My settings, API tokens",
   ],
   handler: login,
 };
@@ -386,8 +378,8 @@ export const authCommands: CommandSpec[] = [
   {
     path: ["auth", "logout"],
     category: CATEGORY,
-    summary: "Remove the stored token from this machine",
-    notes: ["The token itself stays valid until revoked in My settings, API tokens"],
+    summary: "Disconnect OAuth and remove this profile's stored credentials",
+    notes: ["Personal tokens are only removed locally; revoke them in My settings, API tokens"],
     handler: logout,
   },
   {

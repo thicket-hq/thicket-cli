@@ -1,11 +1,11 @@
 # Installing the Thicket CLI for AI agents
 
-The CLI itself: `npm install -g thicket-cli` (Node 20+), then `thicket auth login` (a browser approval that mints a personal access token; `--scope full` for a CLI that writes). Everything below teaches an agent to use it.
+The CLI itself: `npm install -g thicket-cli` (Node 20+), then `thicket auth login` (OAuth browser approval; read-and-write access is shown before approval, or use `--scope read`). Everything below teaches an agent to use it.
 
 Two skills ship in the package under `skills/`:
 
 - `thicket-cli`: how to drive Thicket through the CLI (catalog, envelope, Markdown bodies, mentions, URLs, errors).
-- `thicket-connect`: the local connector driver: runs `thicket agent watch` as an AI agent and turns each trusted event into background work that replies as the agent.
+- `thicket-connect`: connect an AI tool through your browser and use your existing account permissions.
 
 ## Claude Code
 
@@ -35,7 +35,7 @@ mkdir -p .cursor/rules
 thicket skill --quiet | node -e 'process.stdin.on("data",d=>process.stdout.write(JSON.parse(d).skill))' > .cursor/rules/thicket.mdc
 ```
 
-Or copy `skills/thicket-cli/SKILL.md` from the package (`npm root -g`/thicket-cli/skills) into `.cursor/rules/thicket.mdc` and add the frontmatter Cursor expects (`alwaysApply: false`, a description). The connector skill assumes Claude Code's background agents and monitor; other agents can still consume `thicket agent watch` lines and follow the same discipline by hand.
+Or copy `skills/thicket-cli/SKILL.md` from the package (`npm root -g`/thicket-cli/skills) into `.cursor/rules/thicket.mdc` and add the frontmatter Cursor expects (`alwaysApply: false`, a description). The connection skill explains browser approval and account permissions; the CLI skill covers project work.
 
 ## Codex
 
@@ -52,20 +52,10 @@ Copy the skill file next to it if you want the rules inline.
 ## Any other agent
 
 - `thicket commands --json` is the machine-readable catalog; `thicket <command> --agent --help` is structured help for one command.
-- `thicket skill` prints the `thicket-cli` skill; `thicket skill thicket-connect` prints the connector skill.
+- `thicket skill` prints the `thicket-cli` skill; `thicket skill thicket-connect` prints the connection guide.
 - Every command takes `--json` (envelope with breadcrumbs) or `--agent` (data only, no prompts), and `--jq <filter>`.
 - Errors are `{ok: false, error, code, retryable, hint}` with stable exit codes.
 
-## Running an AI agent from Thicket
+## Connection management
 
-1. Create the agent in Thicket (`thicket agents create "Clawdito"`, or Admin, AI agents in the web app) and mint its token there.
-2. Store the token in a profile named after the agent: `printf '%s' "$TOKEN" | thicket -P clawdito auth login --with-token`; check with `thicket -P clawdito me` (membership_kind agent).
-3. Map projects to local repos in `~/.config/thicket/project_repos.toml`:
-
-   ```toml
-   [mappings]
-   "website" = "~/Work/acme/website"
-   "mobile" = "~/Work/acme/mobile-app"
-   ```
-
-4. In Claude Code: `/thicket-connect @Clawdito on Website`. By hand: `thicket -P clawdito agent watch --project Website` and act on each NDJSON line.
+Browser connections appear in My settings, Connected apps. The CLI refreshes credentials automatically. Use `thicket auth logout` to disconnect. A personal access token remains an option for scripts without a browser; revoke it separately under API tokens.

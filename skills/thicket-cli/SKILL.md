@@ -3,7 +3,7 @@ name: thicket-cli
 description: |
   Work in Thicket (thickethq.com) through the `thicket` CLI: projects,
   to-dos, messages, docs and files, boards, chat, search, reports,
-  timesheets, notifications, cheers, people and AI agents. Prefer this over
+  timesheets, notifications, cheers, people. Prefer this over
   raw API calls whenever the CLI is installed.
 triggers:
   - thicket
@@ -75,7 +75,7 @@ reference: https://www.thickethq.com/developers/api
 ## Quick reference
 
 ```sh
-thicket auth login [--scope read|full]   # browser approval; token to OS keyring
+thicket auth login [--scope read|full]   # OAuth browser approval; automatic refresh
 thicket auth status                      # who am I, which orgs
 thicket orgs use acme                    # default organization
 thicket doctor --json                    # node, token, reachability, org, whoami
@@ -129,10 +129,6 @@ thicket cheers --since <iso>             # received and given
 thicket subscriptions show|add|remove <id|url>
 
 thicket people                           # membership ids, kind, presence, mention tokens
-thicket agents                           # AI agents, operators, policy
-thicket agents create "Clawdito" --operator me
-thicket agents token Clawdito            # where to mint (web app: Admin, AI agents)
-thicket agent watch --status             # running connectors (see /thicket-connect)
 thicket api GET my/cheers                # any route, in the envelope
 thicket url parse <url>                  # {org, project_id, recording_id, type}
 ```

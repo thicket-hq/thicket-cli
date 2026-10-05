@@ -1,12 +1,12 @@
 # Thicket CLI
 
-`thicket` is the official command-line interface for [Thicket](https://www.thickethq.com). Manage projects, to-dos, messages, docs and files, boards, chat, timesheets, notifications, and cheers from your terminal or through AI agents, and run the local agent connector that turns an @mention in Thicket into work on your machine.
+`thicket` is the official command-line interface for [Thicket](https://www.thickethq.com). Manage projects, to-dos, messages, docs and files, boards, chat, timesheets, notifications, and cheers from your terminal or through AI agents.
 
 - Works standalone or with any AI agent that can run shell commands
 - JSON envelope with breadcrumbs, `--jq` filtering, structured errors with stable exit codes and a `retryable` flag
 - Markdown bodies everywhere, with `@mentions` resolved to people
 - Accepts a thickethq.com link anywhere an id is expected
-- Browser sign-in that mints a personal access token; no password ever touches the CLI
+- OAuth browser approval with automatic refresh; connections use your existing account permissions
 - Ships two Claude Code skills and a plugin (SessionStart status line); this repo is its own plugin marketplace
 
 ## Install
@@ -54,21 +54,23 @@ Errors are always structured: `{ok: false, error, code, retryable, hint, api_cod
 
 ## Authentication
 
-`thicket auth login` opens your browser to approve the device on thickethq.com and mints a [personal access token](https://www.thickethq.com/developers/api) scoped to you. The token lands in the OS keyring (macOS Keychain, Linux Secret Service) with a chmod-600 `~/.config/thicket/credentials.json` fallback.
+`thicket auth login` opens Thicket in your browser to review and approve access. OAuth credentials are stored in the system keyring (macOS Keychain or Linux Secret Service), with a private credentials-file fallback. Access tokens refresh automatically, including when multiple CLI processes share the connection.
 
-```bash
-thicket auth login               # read-only token (the default)
-thicket auth login --scope full  # full read + write
-thicket auth status              # who am I, from which store
-thicket auth token               # print the token for scripts
-thicket auth logout              # remove the stored token from this machine
+```sh
+thicket auth login               # approve read-and-write access
+thicket auth login --scope read  # request read-only access
+thicket auth status              # check identity, access, and organizations
+thicket auth token               # print the current access token for a script
+thicket auth logout              # disconnect OAuth and remove saved credentials
 ```
 
-Headless environments: `printf '%s' "$TOKEN" | thicket auth login --with-token`, or set `THICKET_TOKEN` per process. Set `THICKET_TOKEN_STORE=file` to keep stored tokens in the config directory's chmod-600 `credentials.json` instead of the OS keyring (containers, CI, sandboxed runs). Revoke any token from My settings, API tokens; revocation is immediate.
+Review and disconnect browser connections in **My settings > Connected apps**. Changes appear under your name and follow your current project permissions.
 
-### Profiles and organizations
+Headless automation can use a personal token: `printf '%s' "$THICKET_TOKEN" | thicket auth login --with-token`, or set `THICKET_TOKEN` per process. `THICKET_TOKEN_STORE=file` uses the private credentials file instead of the system keyring. Revoke personal tokens separately in **My settings > API tokens**; signing out only removes those tokens locally.
 
-Named profiles hold separate identities: `thicket -P work ...` or `THICKET_PROFILE=work`. Each profile stores its own token and defaults; an AI agent's token lives in its own profile (`thicket -P clawdito ...`). With several organizations, pass `--org <slug>` or save a default once with `thicket orgs use <slug>`. Precedence everywhere: flags > environment (`THICKET_TOKEN`, `THICKET_ORG`, `THICKET_BASE_URL`, `THICKET_PROFILE`) > profile config > defaults.
+Existing personal tokens from older CLI versions keep working. Update the CLI and run `thicket auth login` to switch to OAuth, then revoke the old personal token when it is no longer needed.
+
+Named profiles hold separate connections: `thicket -P work ...` or `THICKET_PROFILE=work`. Each OAuth connection is bound to the host where it was approved. With several organizations, pass `--org <slug>` or save a default with `thicket orgs use <slug>`.
 
 ## Rich text and mentions
 
@@ -131,62 +133,14 @@ Hours are `1.5` or `1:30`, and nobody logs more than 24 hours on one day (the re
 
 Approvals are an admin setting, off by default. While they are on, `submit` records a week, and an owner or admin approves it or rejects it with a reason that reaches the person. Nothing ever locks: a change after submitting or approving reads Changed until the week is resubmitted or approved again, and the report shows approved hours unless `--status` says otherwise.
 
-## People and AI agents
+## People
 
-```bash
-thicket people                     # membership ids, kind (person or agent), presence
-thicket people --agents
-thicket agents                     # agents with operators, policy, token summary
-thicket agents create "Clawdito" --operator me
-thicket agents operators Clawdito jane@acme.com --add
-thicket agents update Clawdito --directable-by members
-thicket agents token Clawdito      # explains where tokens are minted (web app: Admin, AI agents)
-thicket agents deactivate|reactivate Clawdito
+```sh
+thicket people
+thicket people list
 ```
 
-An agent is a member without a seat or a sign-in: mention it, assign it, cheer it like a person. It acts only on directives from whoever may direct it (its operators by default, or any non-client member). Token minting needs a signed-in browser session, so `thicket agents token` prints the admin URL unless the API call succeeds; store the minted token in a profile: `printf '%s' "$TOKEN" | thicket -P clawdito auth login --with-token`.
-
-## The local connector: `thicket agent watch`
-
-The agent connects out; Thicket never calls in. There is no endpoint to expose, no webhook to register, nothing to tear down when the process dies.
-
-```bash
-thicket -P clawdito agent watch --project "Website" --project "Mobile"
-thicket -P clawdito agent watch --trust allowlist --allow <membership-id>
-thicket -P clawdito agent watch --since 2026-09-01T10:00:00Z --after <notification-id>
-thicket agent watch --status       # what is running on this machine
-```
-
-It runs under the agent's own token, reads the agent's inbox (the SSE stream, or polling with presence when the stream is unavailable), and for every row: dedupes by id, corroborates the claim against the API (a mention: the re-fetched recording or one of its comments lists the agent in `mentioned_membership_ids` and was written by the row's actor; an assignment: the agent is among `assignee_ids`; a followed-thread comment: the agent's subscription; a cheer: the agent's received-cheers feed), applies the trust mode, acks directives with a cheer, and prints one JSON object per line to stdout. Diagnostics go to stderr. Rate limits back off on `Retry-After`. Presence is renewed by the stream, or by `presence=true` on every poll.
-
-| Flag | Meaning | Default |
-|---|---|---|
-| `--agent <name-or-id>` | The agent this token must belong to | the signed-in agent |
-| `--project <project>` | Only these projects (repeatable; name or id) | all |
-| `--trust <mode>` | `operator`: the server's `directive`/`from_operator` verdicts only; `allowlist`: those plus `--allow` ids; `members`: any non-client member | `operator` |
-| `--allow <membership-id>` | Who may direct the agent under `allowlist` (repeatable) | |
-| `--since <iso>`, `--after <id>` | Resume cursor | now (history is never replayed) |
-| `--poll <seconds>` | Poll interval when the stream is unavailable | 10 |
-| `--no-cheers` | Skip the received-cheers trigger (otherwise polled every 60s) | polling on |
-| `--ack <text>`, `--no-ack` | Cheer each directive with this the moment it is emitted | `On it!` |
-| `--status` | List running watches (from `~/.config/thicket/runs/<pid>.json`) | |
-| `--allow-duplicate` | Start beside a watch that already covers this agent and projects | refused |
-
-Each line:
-
-```json
-{"event_id":"…","kind":"mentioned","created_at":"…",
- "actor":{"membership_id":"…","name":"Jane Doe","role":"owner","kind":"person"},
- "recording":{"id":"…","type":"card","title":"Fix the date picker","project_id":"…","parent_id":"…","web_url":"https://www.thickethq.com/o/acme/projects/…/cards/…","text":"…"},
- "comment":{"id":"…","created_at":"…","text":"@Clawdito ship it","web_url":"…#comment-…"},
- "cheer":null,
- "instruction":"@Clawdito ship it",
- "trigger":{"directive":true,"from_operator":true,"mentioned":true,"assigned":false,"subscribed":false},
- "ack":{"ok":true,"cheer_id":"…","error":null},
- "cursor":{"since":"…","after":"…"}}
-```
-
-`kind` is one of `mentioned`, `assigned`, `commented`, `cheered`, `card_added`, `todo_added`, `chatted`; only the first two are directives. `recording` is what to reply on (`thicket comment <recording.id> ...`); `comment` is the comment or chat line that carried the trigger, when one did; `instruction` is the text to act on. The agent's own activity and client authors never trigger, in every trust mode. The `/thicket-connect` skill (below) is the driver that turns these lines into background work and replies as the agent.
+Membership ids identify assignees and mentions. Your coding agent operates through your own connection. Dedicated agent creation and background mention watchers are retired; older command spellings return a connection hint.
 
 ## AI agent integration
 
@@ -202,7 +156,6 @@ Each line:
 ```
 ~/.config/thicket/config.json        # profiles: default org, host
 ~/.config/thicket/credentials.json   # token fallback when no OS keyring (0600)
-~/.config/thicket/runs/<pid>.json    # live agent watches (removed on exit)
 ~/.config/thicket/project_repos.toml # project -> local repo, read by the /thicket-connect skill
 ```
 

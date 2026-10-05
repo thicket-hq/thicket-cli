@@ -4,7 +4,8 @@
 import { createRequire } from "node:module";
 import { Thicket, ThicketError, type OrgScope } from "thicket-sdk";
 import { resolveSettings, type ResolvedSettings } from "./config.js";
-import { getStoredToken, type TokenStore } from "./keyring.js";
+import { type TokenStore } from "./keyring.js";
+import { connectionCredentials } from "./oauth.js";
 import { CliError } from "./output.js";
 
 const pkg = createRequire(import.meta.url)("../../package.json") as {
@@ -53,7 +54,6 @@ export class CliContext {
   readonly env: NodeJS.ProcessEnv;
   private fetchImpl?: typeof globalThis.fetch;
   private sdkInstance: Thicket | null = null;
-  private tokenInfo: { token: string; store: TokenStore } | null | undefined;
   private authDoc: AuthorizationDoc | null = null;
   private orgOverride: string | null = null;
   private peopleCache: Person[] | null = null;
@@ -70,12 +70,10 @@ export class CliContext {
 
   /** The token + where it came from, or null when signed out. */
   async credentials(): Promise<{ token: string; store: TokenStore } | null> {
-    if (this.tokenInfo !== undefined) return this.tokenInfo;
     const envToken = this.env.THICKET_TOKEN?.trim();
-    this.tokenInfo = envToken
+    return envToken
       ? { token: envToken, store: "env" }
-      : await getStoredToken(this.settings.profile, this.env);
-    return this.tokenInfo;
+      : await connectionCredentials(this.settings.profile, this.settings.baseUrl, this.env, userAgent(), this.fetchImpl);
   }
 
   async sdk(): Promise<Thicket> {
@@ -89,12 +87,21 @@ export class CliContext {
       );
     }
     this.sdkInstance = new Thicket({
-      token: creds.token,
+      token: async () => {
+        const current = await this.credentials();
+        if (!current) throw new CliError("auth", "Not signed in", "Run: thicket auth login");
+        return current.token;
+      },
       userAgent: userAgent(),
       baseUrl: this.settings.baseUrl,
       fetch: this.fetchImpl,
     });
     return this.sdkInstance;
+  }
+
+  /** Transport injection also covers sign-in, refresh and disconnection. */
+  fetch(input: Parameters<typeof fetch>[0], init?: RequestInit): Promise<Response> {
+    return (this.fetchImpl ?? globalThis.fetch)(input, init);
   }
 
   /** GET /authorization, cached for the invocation. */

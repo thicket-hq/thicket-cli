@@ -10,7 +10,7 @@ This is the official Thicket CLI (`thicket`), a thin presentation layer over the
 - **Endpoints the published SDK does not wrap yet** go through `org.request(...)` / `sdk.client.request(...)`, never through hand-rolled fetch (except `rawFetch` for streams and multipart).
 - **Permanent deletes take `--yes`.** Trash is what delete means everywhere else. A command that destroys for good (`timesheet delete`) refuses without `--yes` before any request, with the confirming command as its hint.
 - **Recording references** go through `resolveRecordingRef` (`src/lib/refs.ts`): every id argument accepts an app URL. **Bodies** go through `bodyFields` (`src/lib/markdown.ts`): Markdown to HTML with mentions, `--plain`, `--content-html`, and `-` for stdin via `readBody`.
-- **The connector** (`src/lib/connector.ts`, `src/lib/inbox.ts`) corroborates every event against the API before it prints it. Trust decisions live in `trustVerdict`, a pure function with tests.
+- **OAuth credentials** refresh under a cross-process lock. Bind them to the approved host, never log them, and keep legacy PAT sign-ins working. Dedicated agent setup and `agent watch` are retired; they have no command entries or runtime.
 
 ## Copy rules
 
@@ -25,7 +25,7 @@ This is the official Thicket CLI (`thicket`), a thin presentation layer over the
 
 ## Skills and the plugin
 
-- `skills/thicket-cli/SKILL.md` teaches the CLI; `skills/thicket-connect/SKILL.md` drives `thicket agent watch`. `thicket skill install` and `thicket setup claude` copy them; edit the source here, never an installed copy.
+- `skills/thicket-cli/SKILL.md` teaches the CLI; `skills/thicket-connect/SKILL.md` explains browser approval and connection management. `thicket skill install` and `thicket setup claude` copy them; edit the source here, never an installed copy.
 - `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` make this repo a Claude Code plugin and its own marketplace; `hooks/hooks.json` wires `thicket agent-hook session-start`. Bump the version in both manifests with `package.json`.
 
 ## Releases

@@ -157,6 +157,7 @@ export async function storeToken(
   profile: string,
   token: string,
   env: NodeJS.ProcessEnv = process.env,
+  requiredStore?: TokenStore,
 ): Promise<TokenStore> {
   if (tokenStoreMode(env) === "auto") {
     if (platform() === "darwin" && (await darwinSet(profile, token))) {
@@ -168,6 +169,9 @@ export async function storeToken(
       writeFileToken(profile, null, env);
       return "secret-service";
     }
+  }
+  if (requiredStore === "keychain" || requiredStore === "secret-service") {
+    throw new CliError("auth", "Could not update the connection in your system keyring", "Unlock your keyring, then run: thicket auth login");
   }
   writeFileToken(profile, token, env);
   return "file";

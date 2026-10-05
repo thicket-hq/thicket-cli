@@ -61,7 +61,7 @@ export const apiCommands: CommandSpec[] = [
       { flag: "--query <k=v...>", description: "Query parameters (repeatable)" },
     ],
     notes: [
-      "A path without a leading slash is scoped to the acting org: recordings/<id>, my/cheers, agents",
+      "A path without a leading slash is scoped to the acting org: recordings/<id>, my/cheers, people",
       "Spec: https://www.thickethq.com/openapi.json",
     ],
     handler: api,

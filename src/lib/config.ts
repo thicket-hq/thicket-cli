@@ -3,7 +3,8 @@
 // `doctor` can explain themselves. Config lives at
 // ~/.config/thicket/config.json (XDG respected); secrets never do — they
 // live in the OS keyring, falling back to a chmod-600 credentials.json.
-import { mkdirSync, readFileSync, writeFileSync, chmodSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, renameSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -165,8 +166,8 @@ export function writeFileToken(
   let parsed: CredentialsFile = {};
   try {
     parsed = JSON.parse(readFileSync(credentialsPath(env), "utf8"));
-  } catch {
-    // Fresh file.
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
   }
   parsed.profiles ??= {};
   if (token === null) {
@@ -175,6 +176,7 @@ export function writeFileToken(
     parsed.profiles[profile] = { token };
   }
   mkdirSync(configDir(env), { recursive: true });
-  writeFileSync(credentialsPath(env), `${JSON.stringify(parsed, null, 2)}\n`);
-  chmodSync(credentialsPath(env), 0o600);
+  const scratch = `${credentialsPath(env)}.${randomUUID()}.tmp`;
+  writeFileSync(scratch, `${JSON.stringify(parsed, null, 2)}\n`, { mode: 0o600, flag: "wx" });
+  renameSync(scratch, credentialsPath(env));
 }

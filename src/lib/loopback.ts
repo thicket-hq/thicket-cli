@@ -1,6 +1,6 @@
 // The loopback half of `thicket auth login`: a one-shot 127.0.0.1 HTTP
-// listener that receives the browser redirect from /cli/authorize, checks
-// the state, and hands the single-use code back to the CLI.
+// listener that receives the browser redirect from /oauth/authorize, checks
+// the state and issuer, and hands the single-use code back to the CLI.
 import { createServer, type Server } from "node:http";
 import { CliError } from "./output.js";
 
@@ -19,6 +19,7 @@ export type LoopbackResult = { code: string };
 export function startLoopback(
   state: string,
   timeoutMs = 5 * 60_000,
+  expectedIssuer?: string,
 ): Promise<{ port: number; result: Promise<LoopbackResult>; close: () => void }> {
   return new Promise((resolveStart, rejectStart) => {
     let server: Server;
@@ -46,7 +47,7 @@ export function startLoopback(
       const gotState = url.searchParams.get("state") ?? "";
       const error = url.searchParams.get("error");
       const code = url.searchParams.get("code");
-      if (gotState !== state) {
+      if (gotState !== state || (expectedIssuer && url.searchParams.get("iss") !== expectedIssuer)) {
         res.writeHead(400, { "content-type": "text/html; charset=utf-8" });
         res.end(DENIED_HTML);
         return; // Not ours; keep listening for the real redirect.

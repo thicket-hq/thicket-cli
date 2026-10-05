@@ -168,50 +168,13 @@ describe("people and agents", () => {
     expect(ids.out).toEqual([ME, JANE, BOT]);
   });
 
-  it("agents create/operators/token/deactivate map to the agent routes", async () => {
-    const agent = { membership_id: BOT, name: "Clawdito", role: "member", kind: "agent", directable_by: "operators", active: false, presence_at: null, operators: [{ membership_id: ME, name: "Jason Hanschell" }], token: null, removed_at: null, created_at: "2026-09-01T00:00:00Z" };
-    const created = await exec(["agents", "create", "Clawdito", "--operator", "Jane"], { "POST /api/v1/acme/agents": agent });
-    expect(created.code).toBe(0);
-    expect(created.calls.find((c) => c.key.startsWith("POST /api/v1/acme/agents"))?.body).toEqual({ name: "Clawdito", operator_ids: [JANE] });
-
-    const ops = await exec(["agents", "operators", "Clawdito", "Jane", "--add"], {
-      "GET /api/v1/acme/agents": [agent],
-      [`PUT /api/v1/acme/agents/${BOT}/operators`]: { operators: [{ membership_id: ME, name: "Jason Hanschell" }, { membership_id: JANE, name: "Jane Doe" }] },
-    });
-    expect(ops.code).toBe(0);
-    expect(ops.calls.find((c) => c.key.startsWith("PUT"))?.body.operator_ids.sort()).toEqual([ME, JANE].sort());
-
-    const token = await exec(["agents", "token", BOT], {
-      [`GET /api/v1/acme/agents/${BOT}`]: agent,
-      [`POST /api/v1/acme/agents/${BOT}/token`]: () =>
-        new Response(JSON.stringify({ error: { code: "session_required", message: "Sign in to manage tokens" } }), { status: 403 }),
-    });
-    expect(token.code).toBe(0);
-    expect(token.envelope.data.minted).toBe(false);
-    expect(token.envelope.data.mint_url).toBe("http://localhost:9999/o/acme/admin/agents");
-    expect(token.envelope.summary).toContain("Admin, AI agents");
-
-    const minted = await exec(["agents", "token", BOT, "--scope", "read"], {
-      [`GET /api/v1/acme/agents/${BOT}`]: agent,
-      [`POST /api/v1/acme/agents/${BOT}/token`]: { token: "thicket_pat_new", id: "t1", token_prefix: "thicket_pat_ne", scope: "read", created_at: "2026-09-01T00:00:00Z" },
-    });
-    expect(minted.envelope.data.minted).toBe(true);
-    expect(minted.envelope.data.token).toBe("thicket_pat_new");
-
-    const off = await exec(["agents", "deactivate", BOT], { [`GET /api/v1/acme/agents/${BOT}`]: agent, [`DELETE /api/v1/acme/agents/${BOT}`]: { ok: true } });
-    expect(off.envelope.data.active).toBe(false);
-    const on = await exec(["agents", "reactivate", BOT], { [`GET /api/v1/acme/agents/${BOT}`]: agent, [`PATCH /api/v1/acme/agents/${BOT}`]: { ...agent, active: true } });
-    expect(on.calls.find((c) => c.key.startsWith("PATCH"))?.body).toEqual({ active: true });
-  });
-
-  it("agent watch refuses a person token with a hint, and --status lists runs", async () => {
-    const refused = await exec(["agent", "watch", "--agent", "Clawdito"]);
-    expect(refused.code).toBe(EXIT_CODES.usage);
-    expect(refused.error.error).toContain("person membership");
-    expect(refused.error.hint).toContain("--with-token");
-    const status = await exec(["agent", "watch", "--status"]);
-    expect(status.code).toBe(0);
-    expect(status.envelope.data).toEqual([]);
+  it("removed agent setup commands are absent and make no requests", async () => {
+    for (const args of [["agents"], ["agents", "create", "Helper"], ["agents", "token", "Helper"], ["agents", "reactivate", "Helper"], ["agent", "watch"], ["agent", "watch", "--status"]]) {
+      const result = await exec(args);
+      expect(result.code).toBe(EXIT_CODES.usage);
+      expect(result.error.error).toContain("unknown command");
+      expect(result.calls).toEqual([]);
+    }
   });
 });
 
