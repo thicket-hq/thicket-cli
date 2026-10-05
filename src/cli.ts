@@ -76,32 +76,6 @@ function jqFromArgv(argv: string[]): string | undefined {
   return inline ? inline.slice("--jq=".length) : undefined;
 }
 
-/**
- * `thicket agent watch --agent <name>` reuses the global --agent word with a
- * value. Commander would let the root boolean win and drop the value, so
- * the pair is lifted out of argv here and handed to the handler directly.
- */
-function liftWatchAgent(argv: string[]): { argv: string[]; agentRef?: string } {
-  const words = argv.filter((a) => !a.startsWith("-"));
-  if (words[0] !== "agent" || words[1] !== "watch") return { argv };
-  const out: string[] = [];
-  let agentRef: string | undefined;
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg.startsWith("--agent=")) {
-      agentRef = arg.slice("--agent=".length);
-      continue;
-    }
-    if (arg === "--agent" && argv[i + 1] !== undefined && !argv[i + 1].startsWith("-")) {
-      agentRef = argv[i + 1];
-      i += 1;
-      continue;
-    }
-    out.push(arg);
-  }
-  return { argv: out, agentRef };
-}
-
 function modeFromArgv(argv: string[]): OutputMode {
   if (jqFromArgv(argv) !== undefined) return "json";
   if (argv.includes("--agent")) return "agent";
@@ -153,8 +127,7 @@ export async function run(
   options: RunOptions = {},
 ): Promise<number> {
   const specs = allCommands();
-  const lifted = liftWatchAgent(rawArgv);
-  const argv = lifted.argv;
+  const argv = rawArgv;
   const mode = modeFromArgv(argv);
   const target: RenderTarget = {
     mode,
@@ -232,9 +205,6 @@ export async function run(
         .flat()
         .filter((v): v is string => typeof v === "string");
       const opts = cmd.optsWithGlobals();
-      if (lifted.agentRef !== undefined && spec.path.join(" ") === "agent watch") {
-        opts.agent = lifted.agentRef;
-      }
       const ctx = new CliContext(
         {
           org: opts.org as string | undefined,
