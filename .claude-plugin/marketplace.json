@@ -9,7 +9,7 @@
       "name": "thicket",
       "source": "./",
       "description": "Thicket (thickethq.com) from Claude Code: the thicket CLI skill, the connection skill, and a session-start status line.",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "license": "MIT",
       "homepage": "https://github.com/thicket-hq/thicket-cli",
       "keywords": ["thicket", "project-management", "cli", "agent", "connector"]

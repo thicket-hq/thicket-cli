@@ -99,7 +99,7 @@ export async function connectionCredentials(
 ): Promise<{ token: string; store: TokenStore } | null> {
   const stored = await getStoredToken(profile, env);
   if (!stored) return null;
-  const connection = parseOAuthCredential(stored.token);
+  const connection = parseConnectionCredential(stored.token);
   if (!connection) return stored;
   const origin = oauthBaseUrl(baseUrl);
   if (connection.baseUrl !== origin) throw new CliError("auth", "This profile is connected to a different Thicket host", "Use a separate --profile and run: thicket auth login");
@@ -108,21 +108,66 @@ export async function connectionCredentials(
     // A competing process may have refreshed (or signed out) while we waited.
     const latest = await getStoredToken(profile, env);
     if (!latest) return null;
-    const current = parseOAuthCredential(latest.token);
+    const current = parseConnectionCredential(latest.token);
     if (!current) return latest;
     if (current.baseUrl !== origin) throw new CliError("auth", "The profile changed hosts while connecting", "Run: thicket auth status");
     if (current.expiresAt > Date.now() + REFRESH_EARLY_MS) return { token: current.token, store: latest.store };
-    const refreshed = await requestOAuthTokens(origin, { grant_type: "refresh_token", refresh_token: current.refreshToken }, userAgent, fetchImpl);
+    const refreshed = current.kind === "agent"
+      ? await requestAgentTokens(origin, current.clientId, current.clientSecret, userAgent, fetchImpl)
+      : await requestOAuthTokens(origin, { grant_type: "refresh_token", refresh_token: current.refreshToken }, userAgent, fetchImpl);
     const store = await storeToken(profile, JSON.stringify(refreshed), env, latest.store);
     return { token: refreshed.token, store };
   });
 }
 
-export async function revokeOAuthConnection(connection: OAuthCredential, userAgent: string, fetchImpl: typeof fetch = globalThis.fetch): Promise<void> {
+export async function revokeOAuthConnection(connection: OAuthCredential | AgentCredential, userAgent: string, fetchImpl: typeof fetch = globalThis.fetch): Promise<void> {
   const response = await fetchImpl(`${oauthBaseUrl(connection.baseUrl)}/api/oauth/revoke`, {
     method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", "user-agent": userAgent },
-    body: new URLSearchParams({ client_id: connection.clientId, token: connection.refreshToken, token_type_hint: "refresh_token" }),
+    body: new URLSearchParams(connection.kind === "agent"
+      ? { client_id: connection.clientId, client_secret: connection.clientSecret, token: connection.token }
+      : { client_id: connection.clientId, token: connection.refreshToken, token_type_hint: "refresh_token" }),
     signal: AbortSignal.timeout(30_000), redirect: "error",
   });
   if (!response.ok) throw new CliError("auth", `Could not disconnect from Thicket (HTTP ${response.status})`, "Try again, or disconnect from My settings, Connected apps");
+}
+
+export type AgentCredential = {
+  kind: "agent"; token: string; clientId: string; clientSecret: string;
+  expiresAt: number; baseUrl: string; scope: string;
+};
+
+export function parseConnectionCredential(value: string): OAuthCredential | AgentCredential | null {
+  if (!value.startsWith("{")) return null;
+  let c: Partial<AgentCredential>;
+  try { c = JSON.parse(value); } catch { throw new CliError("auth", "Stored connection is unreadable"); }
+  if (c?.kind !== "agent") return parseOAuthCredential(value);
+  if (typeof c.clientId !== "string" || !c.clientId.startsWith("thicket_agent_") ||
+      typeof c.clientSecret !== "string" || !c.clientSecret ||
+      typeof c.token !== "string" || !c.token.startsWith("thicket_agt_") ||
+      typeof c.expiresAt !== "number" || !Number.isFinite(c.expiresAt) ||
+      typeof c.baseUrl !== "string" || typeof c.scope !== "string") {
+    throw new CliError("auth", "Stored agent connection is incomplete", "Reconnect with: thicket auth agent connect --profile <name>");
+  }
+  return c as AgentCredential;
+}
+
+export async function requestAgentTokens(baseUrl: string, clientId: string, clientSecret: string,
+  userAgent: string, fetchImpl: typeof fetch = globalThis.fetch): Promise<AgentCredential> {
+  const origin = oauthBaseUrl(baseUrl);
+  const response = await fetchImpl(`${origin}/api/oauth/token`, {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", "user-agent": userAgent },
+    body: new URLSearchParams({ grant_type: "client_credentials", client_id: clientId,
+      client_secret: clientSecret, resource: `${origin}/api/v1` }),
+    signal: AbortSignal.timeout(30_000), redirect: "error",
+  });
+  const body = await response.json().catch(() => null) as Record<string, unknown> | null;
+  if (!response.ok) throw new CliError(response.status >= 500 || response.status === 429 ? "network" : "auth",
+    `Agent connection failed (HTTP ${response.status})`, "Check the connection in People, Agents");
+  if (typeof body?.access_token !== "string" || !body.access_token.startsWith("thicket_agt_") ||
+      typeof body.expires_in !== "number" || !Number.isFinite(body.expires_in) || body.expires_in <= 0 ||
+      typeof body.scope !== "string" || String(body.token_type).toLowerCase() !== "bearer") {
+    throw new CliError("auth", "Thicket returned an invalid agent token response");
+  }
+  return { kind: "agent", token: body.access_token, clientId, clientSecret, baseUrl: origin,
+    expiresAt: Date.now() + body.expires_in * 1000, scope: body.scope };
 }

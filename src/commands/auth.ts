@@ -14,7 +14,7 @@ import {
 import { startLoopback } from "../lib/loopback.js";
 import { CliError, table, type CommandResult } from "../lib/output.js";
 import type { CommandSpec } from "../lib/registry.js";
-import { CLI_CLIENT_ID, oauthBaseUrl, parseOAuthCredential, requestOAuthTokens, revokeOAuthConnection, withCredentialLock, type OAuthCredential } from "../lib/oauth.js";
+import { CLI_CLIENT_ID, oauthBaseUrl, parseConnectionCredential, requestOAuthTokens, revokeOAuthConnection, withCredentialLock, type OAuthCredential } from "../lib/oauth.js";
 
 const CATEGORY = "Auth & Config";
 
@@ -43,6 +43,9 @@ async function login(
   const scope = String(options.scope);
   const { profile } = ctx.settings;
   const baseUrl = oauthBaseUrl(ctx.settings.baseUrl);
+  const existing = await getStoredToken(profile, ctx.env);
+  if (existing && parseConnectionCredential(existing.token)?.kind === "agent")
+    throw new CliError("auth", "This profile belongs to a named agent", "Choose a separate profile for your personal connection, or disconnect this profile first");
 
   let token: string;
   let connection: OAuthCredential | undefined;
@@ -100,6 +103,8 @@ async function login(
 
   const store = await withCredentialLock(ctx.env, async () => {
     const previous = await getStoredToken(profile, ctx.env);
+    if (previous && parseConnectionCredential(previous.token)?.kind === "agent")
+      throw new CliError("auth", "This profile was connected as an agent by another process", "Choose a separate profile for your personal connection");
     const store = await storeToken(profile, connection ? JSON.stringify(connection) : token, ctx.env, previous?.store);
     updateProfile(profile, { base_url: baseUrl }, ctx.env);
     return store;
@@ -143,7 +148,7 @@ async function logout(ctx: CliContext): Promise<CommandResult> {
   const { profile, baseUrl } = ctx.settings;
   const { had, connection } = await withCredentialLock(ctx.env, async () => {
     const had = await getStoredToken(profile, ctx.env);
-    const connection = had ? parseOAuthCredential(had.token) : null;
+    const connection = had ? parseConnectionCredential(had.token) : null;
     if (connection) await revokeOAuthConnection(connection, userAgent(), ctx.fetch.bind(ctx));
     await deleteStoredToken(profile, ctx.env);
     return { had, connection };

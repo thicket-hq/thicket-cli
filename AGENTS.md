@@ -10,7 +10,7 @@ This is the official Thicket CLI (`thicket`), a thin presentation layer over the
 - **Endpoints the published SDK does not wrap yet** go through `org.request(...)` / `sdk.client.request(...)`, never through hand-rolled fetch (except `rawFetch` for streams and multipart).
 - **Permanent deletes take `--yes`.** Trash is what delete means everywhere else. A command that destroys for good (`timesheet delete`) refuses without `--yes` before any request, with the confirming command as its hint.
 - **Recording references** go through `resolveRecordingRef` (`src/lib/refs.ts`): every id argument accepts an app URL. **Bodies** go through `bodyFields` (`src/lib/markdown.ts`): Markdown to HTML with mentions, `--plain`, `--content-html`, and `-` for stdin via `readBody`.
-- **OAuth credentials** refresh under a cross-process lock. Bind them to the approved host, never log them, and keep legacy PAT sign-ins working. Dedicated agent setup and `agent watch` are retired; they have no command entries or runtime.
+- **OAuth credentials** refresh under a cross-process lock. Bind them to the approved host, never log them, and keep legacy PAT sign-ins working. Named agents use browser pairing and client credentials under a separate profile. `thicket connect` is the foreground listener for a running Claude Code session. Personal OAuth remains a separate connection.
 
 ## Copy rules
 

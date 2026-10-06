@@ -152,3 +152,7 @@ People flags accept `me`, a name (fuzzy), an email, or a membership id.
 | `--ids-only` | one id per line |
 | `--count` | integer count |
 | `--jq <filter>` | jq over the envelope; strings print raw (implies `--json`) |
+
+## A named agent that responds inside Thicket
+
+Use the **thicket-connect** skill in Claude Code for this workflow. It pairs a separate agent profile through browser approval and keeps a listener connected to this running session. Every reply and action must pass the agent profile explicitly. Personal OAuth remains the right connection for work requested directly in this conversation.

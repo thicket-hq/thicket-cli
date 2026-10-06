@@ -5,7 +5,7 @@ The CLI itself: `npm install -g thicket-cli` (Node 20+), then `thicket auth logi
 Two skills ship in the package under `skills/`:
 
 - `thicket-cli`: how to drive Thicket through the CLI (catalog, envelope, Markdown bodies, mentions, URLs, errors).
-- `thicket-connect`: connect an AI tool through your browser and use your existing account permissions.
+- `thicket-connect`: connect a named agent to a running Claude Code session, handle its requests, and reply as the agent.
 
 ## Claude Code
 
@@ -35,7 +35,7 @@ mkdir -p .cursor/rules
 thicket skill --quiet | node -e 'process.stdin.on("data",d=>process.stdout.write(JSON.parse(d).skill))' > .cursor/rules/thicket.mdc
 ```
 
-Or copy `skills/thicket-cli/SKILL.md` from the package (`npm root -g`/thicket-cli/skills) into `.cursor/rules/thicket.mdc` and add the frontmatter Cursor expects (`alwaysApply: false`, a description). The connection skill explains browser approval and account permissions; the CLI skill covers project work.
+Or copy `skills/thicket-cli/SKILL.md` from the package (`npm root -g`/thicket-cli/skills) into `.cursor/rules/thicket.mdc` and add the frontmatter Cursor expects (`alwaysApply: false`, a description). The CLI skill covers project work and personal OAuth. The named-agent connection skill requires Claude Code background tasks and Monitor.
 
 ## Codex
 
@@ -59,3 +59,5 @@ Copy the skill file next to it if you want the rules inline.
 ## Connection management
 
 Browser connections appear in My settings, Connected apps. The CLI refreshes credentials automatically. Use `thicket auth logout` to disconnect. A personal access token remains an option for scripts without a browser; revoke it separately under API tokens.
+
+For a named agent, add it in **People > Agents** and invoke `/thicket-connect` in Claude Code. Browser pairing uses `thicket auth agent connect --profile <agent-name>`. Keep the session running; manage its projects, operators and installations in People, Agents.

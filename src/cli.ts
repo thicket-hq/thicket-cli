@@ -3,6 +3,7 @@
 // with injected env/fetch/streams.
 import "./lib/color-init.js";
 import { Command, CommanderError } from "commander";
+import { connectCommands } from "./commands/connect.js";
 import { agentCommands } from "./commands/agent.js";
 import { apiCommands } from "./commands/api.js";
 import { authCommands } from "./commands/auth.js";
@@ -54,6 +55,7 @@ export function allCommands(): CommandSpec[] {
     ...peopleCommands,
     ...timesheetCommands,
     ...agentCommands,
+    ...connectCommands,
     ...urlCommands,
     ...apiCommands,
     ...setupCommands,

@@ -140,7 +140,15 @@ thicket people
 thicket people list
 ```
 
-Membership ids identify assignees and mentions. Your coding agent operates through your own connection. Dedicated agent creation and background mention watchers are retired; older command spellings return a connection hint.
+Membership ids identify assignees and mentions. Personal OAuth acts under your name. A named agent has its own identity and credentials: add it in **People > Agents**, select its human operators and projects, then in Claude Code run `/thicket-connect`. Keep that session and computer running so it can acknowledge requests, do the work, and reply in the original message, to-do comment or chat.
+
+```sh
+thicket auth agent connect --profile helper  # browser approval as the agent
+thicket connect --profile helper             # NDJSON listener for Claude Code
+thicket connect status --profile helper --json
+```
+
+The bundled skill manages the listener and Monitor tool, including rearming bounded monitors. One request is handled at a time. Unstarted work is available for up to 30 days; failed or interrupted work requires review in People, Agents before retry. Disconnect there or with `thicket auth logout --profile helper`. Do not run the listener alone and expect an AI response: a Claude Code session must consume its output.
 
 ## AI agent integration
 
@@ -156,7 +164,6 @@ Membership ids identify assignees and mentions. Your coding agent operates throu
 ```
 ~/.config/thicket/config.json        # profiles: default org, host
 ~/.config/thicket/credentials.json   # token fallback when no OS keyring (0600)
-~/.config/thicket/project_repos.toml # project -> local repo, read by the /thicket-connect skill
 ```
 
 `thicket doctor` checks node, token, API reachability, org resolution, and who you are (`--json` adds `whoami` with `membership_kind`).
