@@ -26,7 +26,7 @@ Use Monitor to tail that output file from the beginning. Quote the exact file pa
 
 Keep the listener running separately from the bounded monitor, so rearming a monitor does not interrupt work. Record both task ids, the runtime id and handled request ids in compaction notes. If the monitor cannot be rearmed, stop the listener and report that the agent is offline. Do not leave a listener running without a session consuming its output.
 
-If the background listener exits, read its completion notification, stop the monitor, and report the failure. Do not keep waiting on an output file whose producer has stopped.
+If the background listener exits, read its completion notification, stop the monitor and any active worker, and report the failure. Review unfinished work before starting another listener. Do not keep waiting on an output file whose producer has stopped.
 
 The listener checks the server inbox every few seconds without calling a model. It claims one request at a time and renews its lease. It does not acknowledge, execute or reply. New requests wait until the current request is settled. Unstarted requests remain available for up to 30 days; interrupted work needs a person's review before retry.
 
