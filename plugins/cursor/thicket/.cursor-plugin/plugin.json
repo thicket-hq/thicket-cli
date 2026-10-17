@@ -1,0 +1,38 @@
+{
+  "name": "thicket",
+  "displayName": "Thicket",
+  "version": "1.0.0",
+  "minClientVersions": {
+    "cursor": "3.13.0"
+  },
+  "description": "Find, read and update to-dos, cards, messages, docs and chat in your Thicket projects.",
+  "author": {
+    "name": "Vesperion Gate Inc.",
+    "email": "support@thickethq.com"
+  },
+  "homepage": "https://www.thickethq.com/ai",
+  "repository": "https://github.com/thicket-hq/thicket-cli",
+  "license": "MIT",
+  "logo": "assets/logo.png",
+  "keywords": [
+    "thicket",
+    "projects",
+    "to-dos",
+    "todos",
+    "cards",
+    "messages",
+    "docs",
+    "chat",
+    "project management",
+    "productivity",
+    "mcp"
+  ],
+  "category": "integrations",
+  "tags": [
+    "thicket",
+    "project management",
+    "productivity",
+    "mcp"
+  ],
+  "mcpServers": "./mcp.json"
+}

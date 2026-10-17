@@ -1,0 +1,17 @@
+{
+  "name": "thicket-hq",
+  "owner": {
+    "name": "Vesperion Gate Inc.",
+    "email": "support@thickethq.com"
+  },
+  "metadata": {
+    "description": "Thicket plugins for Cursor and Grok Bot: Thicket through its hosted MCP server"
+  },
+  "plugins": [
+    {
+      "name": "thicket",
+      "source": "plugins/cursor/thicket",
+      "description": "Find, read and update to-dos, cards, messages, docs and chat in your Thicket projects."
+    }
+  ]
+}

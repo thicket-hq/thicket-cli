@@ -176,6 +176,7 @@ Keep that session running on a Mac that stays on: there is no background service
 `thicket` works with any agent that can run shell commands.
 
 - **Claude Code**: `thicket setup claude` installs both skills (`thicket-cli`, `thicket-connect`) under `~/.claude/skills` and prints the plugin registration; the plugin adds a SessionStart hook (`thicket agent-hook session-start`) that tells Claude who is signed in. This repo is its own marketplace: `claude plugin marketplace add thicket-hq/thicket-cli` then `claude plugin install thicket@thicket-hq`.
+- **Cursor and Grok Bot**: [plugins/cursor/thicket](plugins/cursor/thicket) is a Cursor plugin for Thicket's hosted MCP server (`https://www.thickethq.com/api/mcp`), placed on the server so Grok Bot can use it too; `.cursor-plugin/marketplace.json` lists it. It needs no CLI: Cursor signs in to Thicket over OAuth.
 - **Other agents**: [install.md](install.md) covers Cursor, Codex, and anything else; `thicket skill` prints a skill, `thicket skill install` copies them.
 - **Discovery**: `thicket commands --json` returns the full catalog; every command supports `--agent --help` for structured JSON help.
 - **Raw API**: `thicket api GET my/notifications` calls any route in the envelope (org-relative paths by default; `/authorization` for `/api/v1`-relative). Agents working from the raw API instead should read https://www.thickethq.com/thicket-SKILL.md and https://www.thickethq.com/openapi.json.

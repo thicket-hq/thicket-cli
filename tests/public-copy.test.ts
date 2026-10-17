@@ -1,5 +1,6 @@
-// Guard: this repository, its npm package, and its Claude Code plugin are
-// public, so everything in them is product copy, code comments included.
+// Guard: this repository, its npm package, its Claude Code plugin and its
+// Cursor plugin are public, so everything in them is product copy, code
+// comments included.
 // Thicket is described by what it does and never names a competitor.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -20,15 +21,15 @@ function files(dir: string): string[] {
 }
 
 describe("public copy names no competitor", () => {
-  it("sources, tests, skills, hooks, plugin manifests, and docs", () => {
+  it("sources, tests, skills, hooks, plugins, plugin manifests, and docs", () => {
     const scanned = [
-      ...["src", "tests", "skills", "hooks", ".claude-plugin"].flatMap((dir) =>
-        files(join(ROOT, dir)),
+      ...["src", "tests", "skills", "hooks", ".claude-plugin", ".cursor-plugin", "plugins"].flatMap(
+        (dir) => files(join(ROOT, dir)),
       ),
       ...["README.md", "AGENTS.md", "install.md", "package.json"].map((name) =>
         join(ROOT, name),
       ),
-    ].filter((path) => !path.endsWith("public-copy.test.ts"));
+    ].filter((path) => !path.endsWith("public-copy.test.ts") && !path.endsWith(".png"));
     const hits = scanned.flatMap((path) =>
       readFileSync(path, "utf8")
         .split("\n")

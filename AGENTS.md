@@ -27,6 +27,7 @@ This is the official Thicket CLI (`thicket`), a thin presentation layer over the
 
 - `skills/thicket-cli/SKILL.md` teaches the CLI; `skills/thicket-connect/SKILL.md` runs a named agent (connect, setup, the connector) and `skills/thicket-connect/subagent.md` handles one request. `thicket skill install` and `thicket setup claude` copy them; edit the source here, never an installed copy.
 - `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` make this repo a Claude Code plugin and its own marketplace; `hooks/hooks.json` wires `thicket agent-hook session-start`. Bump the version in both manifests with `package.json`.
+- `.cursor-plugin/marketplace.json` lists one Cursor plugin, `plugins/cursor/thicket`: the hosted MCP server with `"placement": "server"` (Grok Bot connects only to a server-placed MCP server), a 1024 px opaque logo, LICENSE and README. It ships nothing to npm and has its own version: bump `plugins/cursor/thicket/.cursor-plugin/plugin.json` whenever that folder changes, so Cursor and Grok Bot fetch it again. `tests/cursor-plugin.test.ts` guards it; also run Cursor's own `scripts/validate-plugins.mjs` (github.com/cursor/plugins) on a copy of the repo before a change goes out.
 
 ## Releases
 
