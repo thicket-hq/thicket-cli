@@ -5,7 +5,7 @@ The CLI itself: `npm install -g thicket-cli` (Node 20+), then `thicket auth logi
 Two skills ship in the package under `skills/`:
 
 - `thicket-cli`: how to drive Thicket through the CLI (catalog, envelope, Markdown bodies, mentions, URLs, errors).
-- `thicket-connect`: connect a named agent to a running Claude Code session, handle its requests, and reply as the agent.
+- `thicket-connect`: connect a named agent to this computer, say who may give it work, run its connector in a Claude Code session, and reply as the agent (with `subagent.md`, its guide for one request).
 
 ## Claude Code
 
@@ -60,4 +60,4 @@ Copy the skill file next to it if you want the rules inline.
 
 Browser connections appear in My settings, Connected apps. The CLI refreshes credentials automatically. Use `thicket auth logout` to disconnect. A personal access token remains an option for scripts without a browser; revoke it separately under API tokens.
 
-For a named agent, add it in **People > Agents** and invoke `/thicket-connect` in Claude Code. Browser pairing uses `thicket auth agent connect --profile <agent-name>`. Keep the session running; manage its projects, operators and installations in People, Agents.
+For a named agent, invoke `/thicket-connect` in Claude Code. It connects the agent with `thicket auth agent connect --profile <agent-name>` (pick your personal agent or create it, or a shared agent, and approve Full access), records who may give it work and which projects it serves with `thicket connect setup --profile <agent-name>`, and runs `thicket connect --profile <agent-name>` for as long as the session lasts. Manage a personal agent's name, projects and connection in **My settings > My agent**, and shared agents in **Admin > Manage agents**. The connector needs Full access: a Read-only connection can read through the CLI, but it can't listen or reply. Keep the session running on a Mac that stays on: there is no background service, and nothing queues while it is off.

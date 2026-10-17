@@ -1,7 +1,7 @@
 // Self-description: the machine-readable catalog and the embeddable agent
 // skill. These are what make the CLI agent-navigable without prior
 // knowledge.
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -31,22 +31,28 @@ export function skillSourcePath(name = "thicket-cli"): string {
   return join(packageRoot(), "skills", name, "SKILL.md");
 }
 
-/** Copies every packaged skill into <dir>/<name>/SKILL.md. */
-export function installSkills(dir: string, only?: string[]): { name: string; path: string }[] {
-  const installed: { name: string; path: string }[] = [];
+/**
+ * Copies every packaged skill into <dir>/<name>/: its SKILL.md and the files
+ * beside it (thicket-connect's subagent.md), which the skill reads by path.
+ */
+export function installSkills(dir: string, only?: string[]): { name: string; path: string; files: string[] }[] {
+  const installed: { name: string; path: string; files: string[] }[] = [];
   for (const name of packagedSkills()) {
     if (only?.length && !only.includes(name)) continue;
-    let text: string;
+    const source = dirname(skillSourcePath(name));
+    let files: { file: string; text: string }[];
     try {
-      text = readFileSync(skillSourcePath(name), "utf8");
+      files = readdirSync(source, { withFileTypes: true })
+        .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+        .map((entry) => ({ file: entry.name, text: readFileSync(join(source, entry.name), "utf8") }));
     } catch {
       throw new CliError("api", `The packaged skill ${name} is missing from this install`);
     }
+    if (!files.some((f) => f.file === "SKILL.md")) throw new CliError("api", `The packaged skill ${name} is missing from this install`);
     const target = join(dir, name);
     mkdirSync(target, { recursive: true });
-    const dest = join(target, "SKILL.md");
-    writeFileSync(dest, text);
-    installed.push({ name, path: dest });
+    for (const { file, text } of files) writeFileSync(join(target, file), text);
+    installed.push({ name, path: join(target, "SKILL.md"), files: files.map((f) => join(target, f.file)) });
   }
   return installed;
 }

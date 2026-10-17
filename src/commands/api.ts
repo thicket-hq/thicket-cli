@@ -1,5 +1,6 @@
 // Raw passthrough: any /api/v1 route, in the envelope.
 import type { CliContext } from "../lib/context.js";
+import { agentChatMentionError, mentionIdsIn } from "../lib/markdown.js";
 import { readBody } from "../lib/refs.js";
 import { CliError, type CommandResult } from "../lib/output.js";
 import type { CommandSpec } from "../lib/registry.js";
@@ -38,6 +39,11 @@ async function api(
       throw new CliError("usage", "--body must be JSON (or - for JSON on stdin)");
     }
   }
+  // Thicket refuses an agent's chat line that mentions anyone: say so before sending it.
+  const line = body as { type?: unknown; content_html?: unknown } | undefined;
+  if (method === "POST" && /\/recordings\/[^/]+\/children$/.test(path) && line?.type === "chat_message" &&
+      typeof line.content_html === "string" && mentionIdsIn(line.content_html).length &&
+      (await ctx.whoami()).membership_kind === "agent") throw agentChatMentionError();
   const sdk = await ctx.sdk();
   const data = await sdk.client.request<unknown>(method, path, { query, ...(body !== undefined ? { body } : {}) });
   const count = Array.isArray(data) ? data.length : null;

@@ -110,10 +110,10 @@ const TOOL_LABELS: Record<ToolName, string> = {
 /** The tool's singleton container id inside a project. */
 export async function resolveTool(
   ctx: CliContext,
-  projectRef: string,
+  projectRef: string | { id: string; name: string },
   tool: ToolName,
 ): Promise<{ containerId: string; projectId: string; projectName: string }> {
-  const project = await resolveProject(ctx, projectRef);
+  const project = typeof projectRef === "string" ? await resolveProject(ctx, projectRef) : projectRef;
   const org = await ctx.org();
   const tools = await org.projects.tools(project.id);
   const entry = tools.find(

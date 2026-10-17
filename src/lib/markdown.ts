@@ -4,6 +4,7 @@
 // `@Name` / `@First.Last` is resolved against the org's people (exact, then
 // fuzzy; ambiguity is an error naming the candidates, a miss stays text).
 import { Marked, type Token, type Tokens } from "marked";
+import { ThicketError } from "thicket-sdk";
 import type { CliContext } from "./context.js";
 import { CliError } from "./output.js";
 
@@ -154,23 +155,72 @@ export type BodyOptions = {
   contentHtml?: string;
   /** Send content as plain text instead of converting Markdown. */
   plain?: boolean;
+  /**
+   * The project the body lands in. A named agent can't read the org's
+   * people, so its bare @names resolve among this project's people; a
+   * function is called only when a bare @name needs it.
+   */
+  project?: string | null | (() => Promise<string | null>);
+  /** A chat line: Thicket refuses an agent's chat line that mentions anyone. */
+  chat?: boolean;
 };
+
+async function isAgent(ctx: CliContext): Promise<boolean> {
+  return (await ctx.whoami()).membership_kind === "agent";
+}
+
+/** Thicket answers 403 agent_mention_in_chat; say so before sending anything. */
+export function agentChatMentionError(): CliError {
+  return new CliError(
+    "usage",
+    "An agent's chat line can't mention anyone: Thicket refuses it",
+    "Name the person in plain text, without @. A comment can mention them",
+  );
+}
+
+/**
+ * An agent's resolver: the people of the project the body lands in. With no
+ * project, or one whose people it can't read, bare @names stay plain text.
+ */
+async function agentResolver(ctx: CliContext, project: BodyOptions["project"]): Promise<MentionResolver | undefined> {
+  const id = typeof project === "function" ? await project() : project ?? null;
+  if (!id) return undefined;
+  try {
+    const org = await ctx.org();
+    return peopleResolver(await org.request<Person[]>("GET", `/projects/${id}/people`));
+  } catch (err) {
+    if (err instanceof ThicketError && (err.status === 403 || err.status === 404)) return undefined;
+    throw err;
+  }
+}
 
 /**
  * The `content`/`content_html` fields for a request body. Markdown by
- * default (mentions resolved against the org's people), `--plain` sends
- * plain text for the server to paragraph, `--content-html` sends raw HTML.
+ * default (mentions resolved against the org's people, or for a named agent
+ * the project's people), `--plain` sends plain text for the server to
+ * paragraph, `--content-html` sends raw HTML.
  */
 export async function bodyFields(
   ctx: CliContext,
   options: BodyOptions,
 ): Promise<{ content?: string; content_html?: string }> {
-  if (options.contentHtml !== undefined) return { content_html: options.contentHtml };
+  if (options.contentHtml !== undefined) {
+    if (options.chat && mentionIdsIn(options.contentHtml).length && await isAgent(ctx)) throw agentChatMentionError();
+    return { content_html: options.contentHtml };
+  }
   if (options.content === undefined) return {};
   if (options.plain) return { content: options.content };
   const needsPeople = /(^|[^\w.])@[A-Za-z]/.test(options.content);
-  const resolve = needsPeople ? peopleResolver(await ctx.people()) : undefined;
-  return { content_html: await markdownToHtml(options.content, resolve) };
+  let resolve: MentionResolver | undefined;
+  let agent = false;
+  if (needsPeople) {
+    agent = await isAgent(ctx);
+    resolve = agent ? await agentResolver(ctx, options.project) : peopleResolver(await ctx.people());
+  }
+  const html = await markdownToHtml(options.content, resolve);
+  // Checked on the rendered HTML: a token quoted in a code span is not a mention.
+  if (agent && options.chat && mentionIdsIn(html).length) throw agentChatMentionError();
+  return { content_html: html };
 }
 
 /** Membership ids mentioned in stored (sanitized) HTML. */

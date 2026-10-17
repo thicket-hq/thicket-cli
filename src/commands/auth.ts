@@ -146,12 +146,12 @@ async function login(
 
 async function logout(ctx: CliContext): Promise<CommandResult> {
   const { profile, baseUrl } = ctx.settings;
-  const { had, connection } = await withCredentialLock(ctx.env, async () => {
+  const { had, connection, gone } = await withCredentialLock(ctx.env, async () => {
     const had = await getStoredToken(profile, ctx.env);
     const connection = had ? parseConnectionCredential(had.token) : null;
-    if (connection) await revokeOAuthConnection(connection, userAgent(), ctx.fetch.bind(ctx));
+    const outcome = connection ? await revokeOAuthConnection(connection, userAgent(), ctx.fetch.bind(ctx)) : null;
     await deleteStoredToken(profile, ctx.env);
-    return { had, connection };
+    return { had, connection, gone: outcome === "already_gone" };
   });
   return {
     data: { profile, removed: !!had },
@@ -160,7 +160,9 @@ async function logout(ctx: CliContext): Promise<CommandResult> {
       : `Nothing stored for profile "${profile}".`,
     notice: had && !connection
       ? `The token itself stays valid until revoked: ${baseUrl} → My settings → API tokens`
-      : undefined,
+      : gone
+        ? "Thicket had already ended this agent connection (a newer connection replaced it, or it was disconnected in the app)"
+        : undefined,
     human: [
       had
         ? `${pc.green("Signed out.")} Removed the stored token for profile "${profile}".`
@@ -261,12 +263,31 @@ async function orgsUse(
   };
 }
 
+/** For an agent credential: the agent's own person, with its owner when it is a personal agent. */
+async function agentPerson(ctx: CliContext, doc: Awaited<ReturnType<CliContext["authorization"]>>) {
+  const org = doc.organizations.length === 1 && doc.organizations[0].membership_kind === "agent" ? doc.organizations[0] : null;
+  if (!org) return null;
+  try {
+    const sdk = await ctx.sdk();
+    const person = await sdk.client.request<{ name: string; boss?: { membership_id: string; name: string } | null }>(
+      "GET", `/api/v1/${org.slug}/people/${org.membership_id}`);
+    const boss = person.boss ?? null;
+    return { membership_id: org.membership_id, name: person.name, organization: org.slug, agent_type: boss ? "personal" : "shared", boss };
+  } catch {
+    return null; // Best effort: the membership id already says who.
+  }
+}
+
 async function me(ctx: CliContext): Promise<CommandResult> {
   const doc = await ctx.authorization();
+  const agent = await agentPerson(ctx, doc);
   return {
-    data: doc,
-    summary: `Authenticated with ${doc.scope} scope; ${doc.organizations.length} organization${doc.organizations.length === 1 ? "" : "s"}`,
+    data: agent ? { ...doc, agent } : doc,
+    summary: agent
+      ? `${agent.name}, a ${agent.agent_type} agent${agent.boss ? ` of ${agent.boss.name}` : ""} in ${agent.organization}; ${doc.scope} scope`
+      : `Authenticated with ${doc.scope} scope; ${doc.organizations.length} organization${doc.organizations.length === 1 ? "" : "s"}`,
     human: [
+      ...(agent ? [`Agent: ${agent.name}, a ${agent.agent_type} agent${agent.boss ? ` of ${agent.boss.name}` : ""}`] : []),
       `Identity: ${doc.identity.id}`,
       `Scope: ${doc.scope}${doc.expires_at ? ` (expires ${doc.expires_at})` : ""}`,
       ...doc.organizations.map(
@@ -429,7 +450,10 @@ export const authCommands: CommandSpec[] = [
     path: ["me"],
     category: CATEGORY,
     summary: "Introspect the credential: identity, orgs, scope",
-    notes: ["membership_id per org is who you are inside it (assignees speak membership ids)"],
+    notes: [
+      "membership_id per org is who you are inside it (assignees speak membership ids)",
+      "For a named agent's profile, data.agent gives its name and, for a personal agent, its owner (boss)",
+    ],
     handler: me,
   },
   {

@@ -80,6 +80,7 @@ Mentions are the one non-Markdown construct:
 
 - `[@Jane Doe](member:<membership id>)` pins a person by membership id (the id `thicket people` lists; `thicket comments thread` prints a paste-ready token per author).
 - A bare `@Jane` or `@Jane.Doe` is resolved against `thicket people`: exact name, then `First.Last`, then first name, then a loose match. An ambiguous name is an `ambiguous` error naming the candidates with their tokens; a name that matches nobody stays plain text. Emails are never treated as mentions.
+- A named agent can't read the organization's people, so its bare names resolve the same way among the people of the project the comment, message or chat line is in; with no project, they stay plain text. An agent's chat line can't mention anyone at all (Thicket refuses it), so the CLI stops before sending one that does.
 
 Opt out per call with `--plain` (send plain text; the server paragraphs it) or `--content-html` / `--html` (send raw HTML, the escape hatch). Any body may be `-` to read it from stdin (one per invocation; the trailing newline is trimmed):
 
@@ -140,15 +141,35 @@ thicket people
 thicket people list
 ```
 
-Membership ids identify assignees and mentions. Personal OAuth acts under your name. A named agent has its own identity and credentials: add it in **People > Agents**, select its human operators and projects, then in Claude Code run `/thicket-connect`. Keep that session and computer running so it can acknowledge requests, do the work, and reply in the original message, to-do comment or chat.
+Membership ids identify assignees and mentions. Personal OAuth acts under your name.
+
+## Named agents
+
+A named agent is a Thicket person of its own, with no sign-in, that people mention, assign to-dos and cards, and send direct messages, like a teammate. A personal agent is yours: create it while connecting, and manage its name, projects and connection in **My settings > My agent**. Owners and admins create shared agents and choose their projects in **Admin > Manage agents**. An agent reaches only the projects it was added to, and posts under its own name.
+
+It works through a Claude Code session on your computer. In Claude Code, run `/thicket-connect` and it walks you through these steps:
 
 ```sh
-thicket auth agent connect --profile helper  # browser approval as the agent
-thicket connect --profile helper             # NDJSON listener for Claude Code
-thicket connect status --profile helper --json
+thicket auth agent connect --profile helper        # approve in the browser: pick or create the agent, choose Full access
+thicket me --profile helper                        # confirm it is the agent
+thicket connect setup --profile helper --serve <project-id>   # who may give it work, which projects it serves
+thicket connect --profile helper                   # the connector: one NDJSON line per request it admits
+thicket connect status --profile helper            # the agent, its settings, its requests by state
 ```
 
-The bundled skill manages the listener and Monitor tool, including rearming bounded monitors. One request is handled at a time. Unstarted work is available for up to 30 days; failed or interrupted work requires review in People, Agents before retry. Disconnect there or with `thicket auth logout --profile helper`. Do not run the listener alone and expect an AI response: a Claude Code session must consume its output.
+Who may give it work is set on the computer that runs it, with `thicket connect setup`:
+
+- `--trust operator` (the default): its operator alone. A personal agent's operator is its owner; a shared agent's is named with `--operator <membership-id>` or `--operator-profile <profile>`.
+- `--trust allowlist`: the operator plus the people named with `--allow <membership-id>`.
+- `--trust project`: also anyone on its projects who isn't a client, as a participant whose words authorize nothing.
+
+Assignments count only from the operator unless `--allow-assignments-from-authorized`. Another agent can wake it only when allowed with `--allow-agent <membership-id>`, by mention, at most 3 times per thread and 20 times per agent a day. `--serve` and `--unserve` choose its projects, and `--watch-completions` passes completions in a served project on as context. Each run keeps what it doesn't pass, and a failed run writes nothing.
+
+The Claude Code session acknowledges each request with a cheer within seconds, hands it to a background subagent that does the work, and replies as the agent where the request was made. Several requests run side by side.
+
+The connector needs Full access. A Read-only connection can read through the CLI as the agent, but it can't run `thicket connect`, so it never listens or replies: `thicket connect setup` and `thicket connect` both refuse it. To change the access, disconnect with `thicket auth logout --profile helper` and connect again choosing Full.
+
+Keep that session running on a Mac that stays on: there is no background service, and nothing queues while it is off. Requests made more than a minute before the connector started aren't picked up. Stopping it marks unfinished work interrupted, and nothing is retried. Connecting the agent again replaces its earlier connection. Disconnect in My settings > My agent or Admin > Manage agents, or with `thicket auth logout --profile helper`.
 
 ## AI agent integration
 

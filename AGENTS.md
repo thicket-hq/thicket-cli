@@ -10,7 +10,7 @@ This is the official Thicket CLI (`thicket`), a thin presentation layer over the
 - **Endpoints the published SDK does not wrap yet** go through `org.request(...)` / `sdk.client.request(...)`, never through hand-rolled fetch (except `rawFetch` for streams and multipart).
 - **Permanent deletes take `--yes`.** Trash is what delete means everywhere else. A command that destroys for good (`timesheet delete`) refuses without `--yes` before any request, with the confirming command as its hint.
 - **Recording references** go through `resolveRecordingRef` (`src/lib/refs.ts`): every id argument accepts an app URL. **Bodies** go through `bodyFields` (`src/lib/markdown.ts`): Markdown to HTML with mentions, `--plain`, `--content-html`, and `-` for stdin via `readBody`.
-- **OAuth credentials** refresh under a cross-process lock. Bind them to the approved host, never log them, and keep legacy PAT sign-ins working. Named agents use browser pairing and client credentials under a separate profile. `thicket connect` is the foreground listener for a running Claude Code session. Personal OAuth remains a separate connection.
+- **OAuth credentials** refresh under a cross-process lock. Bind them to the approved host, never log them, and keep legacy PAT sign-ins working. Named agents use browser pairing and client credentials under a separate profile. Who may give an agent work is decided on its computer: `thicket connect setup` writes `<config dir>/connect/<profile>.json` (`src/lib/agent-trust.ts`), and `thicket connect`, the foreground connector for a running Claude Code session, admits each inbox request against it. Personal OAuth remains a separate connection.
 
 ## Copy rules
 
@@ -25,7 +25,7 @@ This is the official Thicket CLI (`thicket`), a thin presentation layer over the
 
 ## Skills and the plugin
 
-- `skills/thicket-cli/SKILL.md` teaches the CLI; `skills/thicket-connect/SKILL.md` explains browser approval and connection management. `thicket skill install` and `thicket setup claude` copy them; edit the source here, never an installed copy.
+- `skills/thicket-cli/SKILL.md` teaches the CLI; `skills/thicket-connect/SKILL.md` runs a named agent (connect, setup, the connector) and `skills/thicket-connect/subagent.md` handles one request. `thicket skill install` and `thicket setup claude` copy them; edit the source here, never an installed copy.
 - `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` make this repo a Claude Code plugin and its own marketplace; `hooks/hooks.json` wires `thicket agent-hook session-start`. Bump the version in both manifests with `package.json`.
 
 ## Releases

@@ -5,7 +5,7 @@ import { bodyFields } from "../lib/markdown.js";
 import { CliError, clip, type CommandResult } from "../lib/output.js";
 import { readBody, resolveRecordingRef } from "../lib/refs.js";
 import type { CommandSpec } from "../lib/registry.js";
-import { resolveTool } from "../lib/resolve.js";
+import { resolveProject, resolveTool } from "../lib/resolve.js";
 import { detailLines, stripHtml, type RecordingRow } from "../lib/rows.js";
 import { markdownNotes, plainFlag, recordingArg } from "../lib/specs.js";
 import { recordingUrl } from "../lib/urls.js";
@@ -29,15 +29,21 @@ async function post(
 ): Promise<CommandResult> {
   const text = await readBody(args[0]);
   if (!text?.trim()) throw new CliError("usage", "Nothing to say", 'thicket chat post "text" --in <project>');
-  const tool = await resolveTool(ctx, requireIn(options), "chat");
+  // The body first: mentions resolve among the project's people for an agent,
+  // whose chat line may not mention anyone, and that fails before any write.
+  const project = await resolveProject(ctx, requireIn(options));
+  const body = await bodyFields(ctx, {
+    content: options.html ? undefined : text,
+    contentHtml: options.html ? text : undefined,
+    plain: options.plain === true,
+    project: project.id,
+    chat: true,
+  });
+  const tool = await resolveTool(ctx, project, "chat");
   const org = await ctx.org();
   const created = (await org.recordings.createChild(tool.containerId, {
     type: "chat_message",
-    ...(await bodyFields(ctx, {
-      content: options.html ? undefined : text,
-      contentHtml: options.html ? text : undefined,
-      plain: options.plain === true,
-    })),
+    ...body,
   })) as RecordingRow;
   return {
     data: created,

@@ -3,7 +3,7 @@ import pc from "picocolors";
 import type { CliContext } from "../lib/context.js";
 import { bodyFields, mentionToken } from "../lib/markdown.js";
 import { CliError, clip, day, table, type CommandResult } from "../lib/output.js";
-import { readBody, resolveRecordingRef } from "../lib/refs.js";
+import { readBody, resolveRecordingRef, type RecordingRef } from "../lib/refs.js";
 import type { CommandSpec } from "../lib/registry.js";
 import { resolveTool } from "../lib/resolve.js";
 import { detailLines, stripHtml, type RecordingRow } from "../lib/rows.js";
@@ -80,6 +80,7 @@ async function post(
       content: await readBody(options.content),
       contentHtml: options.contentHtml as string | undefined,
       plain: options.plain === true,
+      project: tool.projectId,
     })),
   };
   if (options.draft) body.status = "drafted";
@@ -109,11 +110,14 @@ async function update(
   args: string[],
   options: Record<string, unknown>,
 ): Promise<CommandResult> {
+  // The reference first: a URL names the org, and its project, that mentions resolve in.
+  const ref = resolveRecordingRef(ctx, args[0]);
   const body: Record<string, unknown> = {
     ...(await bodyFields(ctx, {
       content: await readBody(options.content),
       contentHtml: options.contentHtml as string | undefined,
       plain: options.plain === true,
+      project: () => recordingProject(ctx, ref),
     })),
   };
   if (options.title !== undefined) body.title = options.title;
@@ -121,7 +125,7 @@ async function update(
     throw new CliError("usage", "Nothing to update", "Pass --title or --content");
   }
   const org = await ctx.org();
-  const id = resolveRecordingRef(ctx, args[0]).id;
+  const id = ref.id;
   const updated = (await org.request("PATCH", `/recordings/${id}`, {
     body,
   })) as RecordingRow;
@@ -262,6 +266,14 @@ async function commentsThread(
   };
 }
 
+/** The project a recording is in: from its URL when one was pasted, else read. */
+async function recordingProject(ctx: CliContext, ref: RecordingRef): Promise<string | null> {
+  if (ref.projectId) return ref.projectId;
+  const org = await ctx.org();
+  const recording = (await org.recordings.get(ref.id)) as RecordingRow;
+  return (recording.project_id as string | null | undefined) ?? null;
+}
+
 async function commentAdd(
   ctx: CliContext,
   args: string[],
@@ -275,6 +287,7 @@ async function commentAdd(
     content: options.html ? undefined : text,
     contentHtml: options.html ? text : undefined,
     plain: options.plain === true,
+    project: () => recordingProject(ctx, ref),
   });
   const created = (await org.recordings.comment(ref.id, body)) as RecordingRow;
   return {

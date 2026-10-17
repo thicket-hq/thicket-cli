@@ -155,4 +155,4 @@ People flags accept `me`, a name (fuzzy), an email, or a membership id.
 
 ## A named agent that responds inside Thicket
 
-Use the **thicket-connect** skill in Claude Code for this workflow. It pairs a separate agent profile through browser approval and keeps a listener connected to this running session. Every reply and action must pass the agent profile explicitly. Personal OAuth remains the right connection for work requested directly in this conversation.
+Use the **thicket-connect** skill in Claude Code for this workflow. It connects the agent under a separate profile through browser approval, records who may give it work with `thicket connect setup`, and runs `thicket connect` in this session. Every reply and action must pass the agent profile explicitly. Personal OAuth remains the right connection for work requested directly in this conversation.

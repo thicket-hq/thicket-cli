@@ -315,6 +315,8 @@ describe("envelope extras", () => {
     expect(installed.code).toBe(0);
     expect(readFileSync(join(dir, "thicket-cli", "SKILL.md"), "utf8")).toContain("name: thicket-cli");
     expect(readFileSync(join(dir, "thicket-connect", "SKILL.md"), "utf8")).toContain("name: thicket-connect");
+    expect(readFileSync(join(dir, "thicket-connect", "subagent.md"), "utf8")).toContain("Handling one Thicket request as the agent");
+    expect(installed.envelope.data.installed.find((s: { name: string }) => s.name === "thicket-connect").files).toHaveLength(2);
     const setup = await exec(["setup", "claude", "--dir", dir]);
     expect(setup.code).toBe(0);
     expect(setup.envelope.data.plugin.present).toBe(true);

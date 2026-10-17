@@ -1,5 +1,6 @@
 // Skill drift: every `thicket ...` command named in code spans or fenced
-// blocks of the skills, README, and install.md must exist in the registry.
+// blocks of the skills (every Markdown file in them), README, and install.md
+// must exist in the registry.
 // Documenting a command that does not exist is the drift this catches.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -13,7 +14,7 @@ function skillFiles(dir: string): string[] {
   for (const entry of readdirSync(dir)) {
     const path = join(dir, entry);
     if (statSync(path).isDirectory()) out.push(...skillFiles(path));
-    else if (entry === "SKILL.md") out.push(path);
+    else if (entry.endsWith(".md")) out.push(path); // SKILL.md and the guides beside it (subagent.md)
   }
   return out;
 }

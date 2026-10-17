@@ -23,6 +23,6 @@ export const contentFlags = (what = "Body"): FlagSpec[] => [
 
 export const markdownNotes = [
   "Bodies are Markdown: headings, emphasis, lists, links, code, blockquotes, GFM tables; raw HTML is escaped",
-  "Mention people with @Name (resolved against thicket people) or [@Name](member:<membership id>) to pin one",
+  "Mention people with @Name (resolved against thicket people; for a named agent, the project's people) or [@Name](member:<membership id>) to pin one",
   "Pass - as the body to read it from stdin; --plain sends plain text; --content-html sends raw HTML",
 ];

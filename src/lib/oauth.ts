@@ -120,7 +120,12 @@ export async function connectionCredentials(
   });
 }
 
-export async function revokeOAuthConnection(connection: OAuthCredential | AgentCredential, userAgent: string, fetchImpl: typeof fetch = globalThis.fetch): Promise<void> {
+/**
+ * Disconnects on the server. An agent connection that Thicket no longer
+ * knows (replaced by a newer connection, or disconnected in the app) answers
+ * 401: there is nothing left to revoke, so that is "already_gone".
+ */
+export async function revokeOAuthConnection(connection: OAuthCredential | AgentCredential, userAgent: string, fetchImpl: typeof fetch = globalThis.fetch): Promise<"revoked" | "already_gone"> {
   const response = await fetchImpl(`${oauthBaseUrl(connection.baseUrl)}/api/oauth/revoke`, {
     method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", "user-agent": userAgent },
     body: new URLSearchParams(connection.kind === "agent"
@@ -128,7 +133,12 @@ export async function revokeOAuthConnection(connection: OAuthCredential | AgentC
       : { client_id: connection.clientId, token: connection.refreshToken, token_type_hint: "refresh_token" }),
     signal: AbortSignal.timeout(30_000), redirect: "error",
   });
-  if (!response.ok) throw new CliError("auth", `Could not disconnect from Thicket (HTTP ${response.status})`, "Try again, or disconnect from My settings, Connected apps");
+  if (connection.kind === "agent" && response.status === 401) return "already_gone";
+  if (!response.ok) throw new CliError("auth", `Could not disconnect from Thicket (HTTP ${response.status})`,
+    connection.kind === "agent"
+      ? "Try again, or disconnect the agent in My settings > My agent (personal) or Admin > Manage agents (shared)"
+      : "Try again, or disconnect from My settings, Connected apps");
+  return "revoked";
 }
 
 export type AgentCredential = {
@@ -162,7 +172,7 @@ export async function requestAgentTokens(baseUrl: string, clientId: string, clie
   });
   const body = await response.json().catch(() => null) as Record<string, unknown> | null;
   if (!response.ok) throw new CliError(response.status >= 500 || response.status === 429 ? "network" : "auth",
-    `Agent connection failed (HTTP ${response.status})`, "Check the connection in People, Agents");
+    `Agent connection failed (HTTP ${response.status})`, "Check the agent's connection in My settings > My agent (personal) or Admin > Manage agents (shared)");
   if (typeof body?.access_token !== "string" || !body.access_token.startsWith("thicket_agt_") ||
       typeof body.expires_in !== "number" || !Number.isFinite(body.expires_in) || body.expires_in <= 0 ||
       typeof body.scope !== "string" || String(body.token_type).toLowerCase() !== "bearer") {
