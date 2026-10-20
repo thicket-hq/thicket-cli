@@ -21,12 +21,12 @@ function files(dir: string): string[] {
 }
 
 describe("public copy names no competitor", () => {
-  it("sources, tests, skills, hooks, plugins, plugin manifests, and docs", () => {
+  it("sources, tests, skills, hooks, plugins, plugin manifests, workflows, and docs", () => {
     const scanned = [
-      ...["src", "tests", "skills", "hooks", ".claude-plugin", ".cursor-plugin", "plugins"].flatMap(
+      ...["src", "tests", "skills", "hooks", ".claude-plugin", ".cursor-plugin", "plugins", ".github"].flatMap(
         (dir) => files(join(ROOT, dir)),
       ),
-      ...["README.md", "AGENTS.md", "install.md", "package.json"].map((name) =>
+      ...["README.md", "AGENTS.md", "CLAUDE.md", "install.md", "package.json"].map((name) =>
         join(ROOT, name),
       ),
     ].filter((path) => !path.endsWith("public-copy.test.ts") && !path.endsWith(".png"));
