@@ -76,7 +76,7 @@ export function catalogEntry(spec: CommandSpec) {
 }
 
 export const GLOBAL_FLAGS: FlagSpec[] = [
-  { flag: "--org <slug>", description: "Organization to act in (default: your only org, or the profile's saved org)" },
+  { flag: "--org <slug>", description: "Organization to act in, by slug or key (default: your only org, or the profile's saved org)" },
   { flag: "-P, --profile <name>", description: "Named profile to use (default: THICKET_PROFILE or the config default)" },
   { flag: "-j, --json", description: "JSON envelope output: {ok, data, summary, breadcrumbs}" },
   { flag: "-q, --quiet", description: "Raw data only, no envelope (errors stay structured)" },

@@ -1,6 +1,6 @@
 {
   "name": "thicket-cli",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Official command-line interface for Thicket (thickethq.com): projects, to-dos, messages, docs and files, boards, chat, search, reports, timesheets, notifications, cheers, and OAuth connections, from your terminal or through AI agents.",
   "keywords": [
     "thicket",
@@ -49,7 +49,7 @@
     "marked": "18.0.11",
     "picocolors": "^1.1.0",
     "proper-lockfile": "4.1.2",
-    "thicket-sdk": "^0.4.0"
+    "thicket-sdk": "^0.5.1"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

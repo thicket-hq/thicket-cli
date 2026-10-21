@@ -3,11 +3,12 @@
 // tokens ride THICKET_TOKEN, config rides THICKET_CONFIG_DIR, and
 // THICKET_TOKEN_STORE=file keeps the developer's real keychain login out of
 // every run (a signed-in machine must not change what these tests see).
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { allCommands, run } from "../src/cli.js";
+import { configPath } from "../src/lib/config.js";
 import { EXIT_CODES } from "../src/lib/output.js";
 import { catalogEntry } from "../src/lib/registry.js";
 
@@ -155,6 +156,80 @@ describe("envelope and modes", () => {
     const envelope = JSON.parse(err.join("\n"));
     expect(envelope.code).toBe("ambiguous");
     expect(envelope.hint).toContain("thicket orgs use");
+  });
+});
+
+describe("workspace references (docs/org-key-plan-2026-10-21.md D9)", () => {
+  // Acme's slug carries its key; Beta is a pre-July workspace whose slug
+  // does not, so only the membership list ties the two together.
+  const ACME = { ...AUTH_DOC.organizations[0], slug: "acme-ab12cd34", key: "ab12cd34" };
+  const BETA = { ...AUTH_DOC.organizations[0], id: "org-2", name: "Beta", slug: "beta-Xy9Qz", key: "qwerty12" };
+  const KEYED = { "GET /api/v1/authorization": { ...AUTH_DOC, organizations: [ACME, BETA] } };
+  const REC = "1e6b3cbb-0000-4000-8000-0000000000e1";
+  const card = (ref: string) => `https://www.thickethq.com/o/${ref}/projects/${PROJECTS[0].id}/cards/${REC}`;
+  const row = { id: REC, type: "card", title: "Card", project_id: PROJECTS[0].id, parent_id: null };
+
+  it.each([
+    ["an old slug", "old-name-ab12cd34", "acme-ab12cd34"],
+    ["the bare key", "ab12cd34", "acme-ab12cd34"],
+    ["the current slug", "acme-ab12cd34", "ab12cd34"],
+    ["the key under a pre-July --org", "new-name-qwerty12", "beta-Xy9Qz"],
+  ])("a URL under %s adopts the workspace --org names", async (_, ref, flag) => {
+    const { code, out } = await exec(["show", card(ref), "--org", flag], {
+      ...KEYED,
+      [`GET /api/v1/${ref}/recordings/${REC}`]: row,
+    });
+    expect(code).toBe(0);
+    expect(JSON.parse(out.join("\n")).data.web_url).toBe(`http://localhost:9999${new URL(card(ref)).pathname}`);
+  });
+
+  it("a URL naming another workspace than --org is refused before any request to it", async () => {
+    let asked = false;
+    const { code, err } = await exec(["show", card("beta-Xy9Qz"), "--org", "acme-ab12cd34"], {
+      ...KEYED,
+      [`GET /api/v1/beta-Xy9Qz/recordings/${REC}`]: () => { asked = true; return row; },
+    });
+    expect(code).toBe(EXIT_CODES.usage);
+    const envelope = JSON.parse(err.join("\n"));
+    expect(envelope.error).toBe('That URL belongs to "beta-Xy9Qz" but --org says "acme-ab12cd34"');
+    expect(asked).toBe(false);
+  });
+
+  it("a command that scopes the org before reading the URL refuses another key outright, and acts on the same key", async () => {
+    let trashed = "";
+    const trash = (ref: string) => exec(["trash", card(ref), "--org", "acme-ab12cd34"], {
+      ...KEYED,
+      [`PUT /api/v1/acme-ab12cd34/recordings/${REC}/status/trashed`]: () => { trashed = ref; return {}; },
+      [`PUT /api/v1/beta-Xy9Qz/recordings/${REC}/status/trashed`]: () => { trashed = ref; return {}; },
+    });
+    const refused = await trash("beta-Xy9Qz");
+    expect(refused.code).toBe(EXIT_CODES.usage);
+    expect(JSON.parse(refused.err.join("\n")).error).toBe('That URL belongs to "beta-Xy9Qz" but --org says "acme-ab12cd34"');
+    expect(trashed).toBe("");
+    expect((await trash("old-name-ab12cd34")).code).toBe(0);
+    expect(trashed).toBe("old-name-ab12cd34");
+  });
+
+  it("a stored org setting yields to a pasted URL without a check", async () => {
+    const { code } = await exec(["show", card("beta-Xy9Qz")], {
+      [`GET /api/v1/beta-Xy9Qz/recordings/${REC}`]: row,
+    }, { THICKET_ORG: "acme-ab12cd34" });
+    expect(code).toBe(0);
+  });
+
+  it("orgs use takes any reference and saves the current slug in the invocation's own config", async () => {
+    const env = { THICKET_CONFIG_DIR: mkdtempSync(join(tmpdir(), "thicket-cli-orgs-")) };
+    const saved = () => JSON.parse(readFileSync(configPath(env), "utf8")).profiles.default.org;
+    const byKey = await exec(["orgs", "use", "ab12cd34"], KEYED, env);
+    expect(byKey.code).toBe(0);
+    expect(JSON.parse(byKey.out.join("\n")).data.org).toBe("acme-ab12cd34");
+    expect(saved()).toBe("acme-ab12cd34");
+    // A pre-July slug from before a rename is known only to the server.
+    const legacy = await exec(["orgs", "use", "beta-Old1x"], { ...KEYED, "GET /api/v1/beta-Old1x/account": { id: "org-2" } }, env);
+    expect(legacy.code).toBe(0);
+    expect(saved()).toBe("beta-Xy9Qz");
+    const stranger = await exec(["orgs", "use", "gamma-zz99yy88"], KEYED);
+    expect(stranger.code).toBe(EXIT_CODES.not_found);
   });
 });
 

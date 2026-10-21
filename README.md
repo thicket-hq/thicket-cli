@@ -70,7 +70,7 @@ Headless automation can use a personal token: `printf '%s' "$THICKET_TOKEN" | th
 
 Existing personal tokens from older CLI versions keep working. Update the CLI and run `thicket auth login` to switch to OAuth, then revoke the old personal token when it is no longer needed.
 
-Named profiles hold separate connections: `thicket -P work ...` or `THICKET_PROFILE=work`. Each OAuth connection is bound to the host where it was approved. With several organizations, pass `--org <slug>` or save a default with `thicket orgs use <slug>`.
+Named profiles hold separate connections: `thicket -P work ...` or `THICKET_PROFILE=work`. Each OAuth connection is bound to the host where it was approved. With several organizations, pass `--org <slug>` or save a default with `thicket orgs use <slug>`; either takes the workspace's slug or its key (`key` in `thicket orgs --json`), and a link under an older address of the workspace still names it.
 
 ## Rich text and mentions
 

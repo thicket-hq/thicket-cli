@@ -6,6 +6,7 @@ import { Thicket, ThicketError, type OrgScope } from "thicket-sdk";
 import { resolveSettings, type ResolvedSettings } from "./config.js";
 import { type TokenStore } from "./keyring.js";
 import { connectionCredentials } from "./oauth.js";
+import { findOrgByRef, orgRefKey } from "./org-ref.js";
 import { CliError } from "./output.js";
 
 const pkg = createRequire(import.meta.url)("../../package.json") as {
@@ -21,7 +22,10 @@ export function userAgent(): string {
 export type AuthorizationOrg = {
   id: string;
   name: string;
+  /** For building paths only: a rename regenerates it. */
   slug: string;
+  /** The workspace's permanent key; with id, its identity. */
+  key: string;
   href: string;
   membership_id: string;
   role: string;
@@ -56,6 +60,8 @@ export class CliContext {
   private sdkInstance: Thicket | null = null;
   private authDoc: AuthorizationDoc | null = null;
   private orgOverride: string | null = null;
+  private orgOverrideChecked: string | null = null;
+  private orgHandedOut = false;
   private peopleCache: Person[] | null = null;
 
   constructor(
@@ -117,22 +123,62 @@ export class CliContext {
 
   /**
    * A pasted URL names its org; adopt it for this invocation unless --org
-   * was passed explicitly and disagrees (then the flag is the user's word).
+   * was passed explicitly and names another workspace (then the flag is the
+   * user's word). orgSlug() settles that before any request goes out; once a
+   * path was built from --org, a URL that may name another workspace can no
+   * longer be checked first, so a differing key is refused here.
    */
   adoptOrg(slug: string): void {
-    if (this.settings.sources.org === "flag" && this.settings.org !== slug) {
-      throw new CliError(
-        "usage",
-        `That URL belongs to "${slug}" but --org says "${this.settings.org}"`,
-        "Drop --org, or pass the matching one",
-      );
-    }
+    if (this.orgHandedOut && this.flagKeyDiffers(slug)) throw this.otherOrg(slug);
     this.orgOverride = slug;
   }
 
-  /** The org slug this invocation acts in; auto-picks a sole org. */
+  /**
+   * Whether --org was passed and carries another key than a URL's reference.
+   * Equal keys name one workspace (an old slug, the bare key, the current
+   * slug): never whole strings.
+   */
+  private flagKeyDiffers(url: string): boolean {
+    const flag = this.settings.org;
+    return this.settings.sources.org === "flag" && !!flag && orgRefKey(url) !== orgRefKey(flag);
+  }
+
+  private otherOrg(url: string): CliError {
+    return new CliError(
+      "usage",
+      `That URL belongs to "${url}" but --org says "${this.settings.org}"`,
+      "Drop --org, or pass the matching one",
+    );
+  }
+
+  /**
+   * Keys that differ can still name one workspace: a pre-July workspace's
+   * slug does not carry its key, so the two must resolve to the same
+   * organization.
+   */
+  private async refuseOtherOrg(url: string): Promise<void> {
+    if (!this.flagKeyDiffers(url)) return;
+    const named = await this.membershipFor(url);
+    const given = await this.membershipFor(this.settings.org!);
+    if (named && given && named.id === given.id) return;
+    throw this.otherOrg(url);
+  }
+
+  /** The org reference this invocation builds paths with; auto-picks a sole org. */
   async orgSlug(): Promise<string> {
-    if (this.orgOverride) return this.orgOverride;
+    const ref = await this.actingRef();
+    this.orgHandedOut = true;
+    return ref;
+  }
+
+  private async actingRef(): Promise<string> {
+    if (this.orgOverride) {
+      if (this.orgOverrideChecked !== this.orgOverride) {
+        await this.refuseOtherOrg(this.orgOverride);
+        this.orgOverrideChecked = this.orgOverride;
+      }
+      return this.orgOverride;
+    }
     if (this.settings.org) return this.settings.org;
     const doc = await this.authorization();
     if (doc.organizations.length === 1) return doc.organizations[0].slug;
@@ -152,6 +198,26 @@ export class CliContext {
     );
   }
 
+  /**
+   * The caller's row for an org reference (a slug, an old slug, the bare
+   * key): findOrgByRef over /authorization, then the server's own resolver,
+   * which also knows a pre-July workspace's slug from before its rename.
+   * Undefined when it names no workspace of the caller's.
+   */
+  async membershipFor(ref: string): Promise<AuthorizationOrg | undefined> {
+    const doc = await this.authorization();
+    const listed = findOrgByRef(doc.organizations, ref);
+    if (listed) return listed;
+    let account: { id: string };
+    try {
+      account = await (await this.sdk()).org(ref).request<{ id: string }>("GET", "/account");
+    } catch (err) {
+      if (isNotFound(err)) return undefined;
+      throw err;
+    }
+    return doc.organizations.find((o) => o.id === account.id);
+  }
+
   async org(): Promise<OrgScope> {
     const sdk = await this.sdk();
     return sdk.org(await this.orgSlug());
@@ -160,8 +226,7 @@ export class CliContext {
   /** The caller's row for the acting org: membership id, role, kind. */
   async whoami(): Promise<AuthorizationOrg> {
     const slug = await this.orgSlug();
-    const doc = await this.authorization();
-    const org = doc.organizations.find((o) => o.slug === slug);
+    const org = await this.membershipFor(slug);
     if (!org?.membership_id) {
       throw new CliError("not_found", `You are not a member of "${slug}"`);
     }

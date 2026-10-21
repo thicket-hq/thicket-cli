@@ -1,5 +1,6 @@
 // Browser-connected agents use the same CLI commands as their user.
 import { userAgent, type CliContext } from "../lib/context.js";
+import { findOrgByRef } from "../lib/org-ref.js";
 import type { CommandResult } from "../lib/output.js";
 import type { CommandSpec } from "../lib/registry.js";
 
@@ -20,10 +21,10 @@ async function sessionStart(ctx: CliContext): Promise<CommandResult> {
       } else {
         const doc = (await response.json()) as {
           scope: string;
-          organizations: { slug: string; name: string; membership_id: string; membership_kind?: string; role: string }[];
+          organizations: { slug: string; key: string; name: string; membership_id: string; membership_kind?: string; role: string }[];
         };
         const acting = ctx.settings.org ?? (doc.organizations.length === 1 ? doc.organizations[0].slug : null);
-        const org = doc.organizations.find((o) => o.slug === acting) ?? doc.organizations[0];
+        const org = (acting ? findOrgByRef(doc.organizations, acting) : undefined) ?? doc.organizations[0];
         let who = org ? `membership ${org.membership_id}` : "no organization";
         if (org) {
           try {

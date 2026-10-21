@@ -267,6 +267,17 @@ describe("connect setup: refusals", () => {
     expect(written(env)).toMatchObject({ agent_membership_id: AGENT, trust: "operator", serve: [{ id: P2 }] });
     expect(fresh.envelope().data.checks).toContainEqual(expect.objectContaining({ check: "settings", status: "warn" }));
   });
+
+  it("keeps its settings when the workspace's slug changes: the membership names the workspace", async () => {
+    const env = environment(); await connectedAgent(env);
+    expect((await setup(env, ["--serve", P1, "--trust", "project"])).code).toBe(0);
+    const { writeConnectSettings } = await import("../src/lib/agent-trust.js");
+    writeConnectSettings(env, "helper", { ...written(env), organization: "old-name-acme" });
+    const kept = await setup(env, []);
+    expect(kept.code).toBe(0);
+    expect(written(env)).toMatchObject({ organization: "acme", trust: "project", serve: [{ id: P1 }] });
+    expect(kept.envelope().data.checks).not.toContainEqual(expect.objectContaining({ check: "settings" }));
+  });
 });
 
 describe("the catalog", () => {

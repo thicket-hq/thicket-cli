@@ -245,21 +245,22 @@ async function orgsUse(
   ctx: CliContext,
   args: string[],
 ): Promise<CommandResult> {
-  const slug = args[0];
-  const doc = await ctx.authorization();
-  const org = doc.organizations.find((o) => o.slug === slug);
+  const ref = args[0];
+  const org = await ctx.membershipFor(ref);
   if (!org) {
+    const doc = await ctx.authorization();
     throw new CliError(
       "not_found",
-      `You do not belong to an organization with slug "${slug}"`,
+      `"${ref}" names no organization you belong to`,
       `Yours: ${doc.organizations.map((o) => o.slug).join(", ")}`,
     );
   }
-  updateProfile(ctx.settings.profile, { org: slug });
+  // Saved as the current slug: any slug carrying the key keeps naming it.
+  updateProfile(ctx.settings.profile, { org: org.slug }, ctx.env);
   return {
-    data: { profile: ctx.settings.profile, org: slug },
-    summary: `Default organization for profile "${ctx.settings.profile}" is now ${org.name} (${slug}).`,
-    human: [`${pc.green("Saved.")} Commands now act in ${org.name} (${slug}).`],
+    data: { profile: ctx.settings.profile, org: org.slug },
+    summary: `Default organization for profile "${ctx.settings.profile}" is now ${org.name} (${org.slug}).`,
+    human: [`${pc.green("Saved.")} Commands now act in ${org.name} (${org.slug}).`],
   };
 }
 
@@ -344,7 +345,7 @@ async function doctor(ctx: CliContext): Promise<CommandResult> {
           ? `acting in ${acting}`
           : `no default among ${orgCount} orgs; run: thicket orgs use <slug>`,
       );
-      const org = doc.organizations.find((o) => o.slug === acting) ?? null;
+      const org = (acting ? await ctx.membershipFor(acting) : undefined) ?? null;
       whoami = {
         identity: doc.identity.id,
         scope: doc.scope,
@@ -443,7 +444,7 @@ export const authCommands: CommandSpec[] = [
     path: ["orgs", "use"],
     category: CATEGORY,
     summary: "Save a default organization for this profile",
-    args: [{ name: "slug", description: "Organization slug", required: true }],
+    args: [{ name: "slug", description: "Organization slug, or its key", required: true }],
     handler: orgsUse,
   },
   {

@@ -217,7 +217,7 @@ async function connectSetup(ctx: CliContext, options: Record<string, unknown>): 
   } catch {
     checks.push({ check: "settings", status: "warn", detail: "The earlier settings file was unreadable, so this run starts fresh." });
   }
-  if (previous && (previous.agent_membership_id !== me.membership_id || previous.organization !== me.slug || previous.base_url !== origin)) {
+  if (previous && !writtenFor(previous, me, origin)) {
     checks.push({ check: "settings", status: "warn", detail: "The earlier settings were for another agent, so this run starts fresh." });
     previous = null;
   }
@@ -363,12 +363,21 @@ async function connectSetup(ctx: CliContext, options: Record<string, unknown>): 
 
 type Inbox = { items: InboxItem[] };
 
+/**
+ * Whether settings were written for this agent on this host. The membership
+ * id also names the workspace; the slug they record is for showing, since a
+ * rename regenerates it (docs/org-key-plan-2026-10-21.md D9).
+ */
+function writtenFor(settings: ConnectSettings, me: AuthorizationOrg, origin: string): boolean {
+  return settings.agent_membership_id === me.membership_id && settings.base_url === origin;
+}
+
 /** The settings this run admits by, or a refusal saying how to write them. */
 function requireSettings(ctx: CliContext, me: AuthorizationOrg): ConnectSettings {
   const name = ctx.settings.profile;
   const settings = readConnectSettings(ctx.env, name);
   if (!settings) throw new CliError("usage", "This agent isn't set up on this computer", `Run thicket connect setup --profile ${name} first`);
-  if (settings.agent_membership_id !== me.membership_id || settings.organization !== me.slug || settings.base_url !== oauthBaseUrl(ctx.settings.baseUrl))
+  if (!writtenFor(settings, me, oauthBaseUrl(ctx.settings.baseUrl)))
     throw new CliError("usage", "This agent's settings were written for another agent", `Run thicket connect setup --profile ${name} again`);
   return settings;
 }

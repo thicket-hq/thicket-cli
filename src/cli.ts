@@ -145,7 +145,7 @@ export async function run(
   program
     .description("The official Thicket CLI: thickethq.com from your terminal, for humans and agents")
     .version(VERSION, "-V, --version")
-    .option("--org <slug>", "Organization to act in")
+    .option("--org <slug>", "Organization to act in, by slug or key")
     .option("-P, --profile <name>", "Named profile")
     .option("-j, --json", "JSON envelope output")
     .option("-q, --quiet", "Raw data only")

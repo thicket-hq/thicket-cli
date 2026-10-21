@@ -40,7 +40,8 @@ reference: https://www.thickethq.com/developers/api
 3. **Scope to a project with `--in`.** Content commands (todos, messages,
    docs, files, cards, chat) need `--in <project>`; names are matched
    fuzzily, ids are exact. With several organizations, add `--org <slug>`
-   or set a default once: `thicket orgs use <slug>`.
+   or set a default once: `thicket orgs use <slug>`. Either takes the
+   workspace's slug or its key (`key` in `thicket orgs --json`).
 4. **Everything is a recording, and a link is an id.** `thicket show <id|url>`
    reads anything and returns `web_url`; `thicket comment <id|url> "text"`
    comments on anything (comments are flat, always on the parent, never on
