@@ -14,7 +14,6 @@ async function search(
   args: string[],
   options: Record<string, unknown>,
 ): Promise<CommandResult> {
-  const org = await ctx.org();
   const query: Record<string, string | number | boolean> = {};
   if (options.project) {
     query.project_id = (await resolveProject(ctx, String(options.project))).id;
@@ -24,6 +23,7 @@ async function search(
   if (options.archived) query.archived = 1;
   if (options.recent) query.sort = "recent";
   if (options.limit) query.per_page = Number(options.limit);
+  const org = await ctx.org();
   const rows = (await org.search.query(args[0], query)) as (RecordingRow & {
     excerpt?: string;
   })[];
@@ -46,12 +46,12 @@ async function activity(
   _args: string[],
   options: Record<string, unknown>,
 ): Promise<CommandResult> {
-  const org = await ctx.org();
   const query: string[] = [];
   if (options.project) {
     const project = await resolveProject(ctx, String(options.project));
     query.push(`project_id=${encodeURIComponent(project.id)}`);
   }
+  const org = await ctx.org();
   if (options.q) query.push(`q=${encodeURIComponent(String(options.q))}`);
   if (options.limit) query.push(`per_page=${Number(options.limit)}`);
   type ActivityRow = {

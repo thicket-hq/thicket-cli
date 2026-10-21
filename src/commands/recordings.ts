@@ -42,7 +42,6 @@ function lifecycle(
   verb: string,
 ): CommandSpec["handler"] {
   return async (ctx, args) => {
-    const org = await ctx.org();
     const ids = args[0]
       .split(",")
       .map((s) => s.trim())
@@ -51,6 +50,7 @@ function lifecycle(
     if (ids.length === 0) {
       throw new CliError("usage", "No recording ids given");
     }
+    const org = await ctx.org();
     for (const id of ids) {
       await org.recordings.setStatus(id, status);
     }

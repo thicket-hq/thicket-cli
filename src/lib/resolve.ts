@@ -139,7 +139,11 @@ export async function resolveTodoList(
   projectRef: string,
   listRef: string,
 ): Promise<{ id: string; title: string }> {
-  if (looksLikeId(listRef)) return { id: listRef, title: listRef };
+  if (looksLikeId(listRef)) {
+    // A project's link still names the org the list is in.
+    if (looksLikeUrl(projectRef)) await resolveProject(ctx, projectRef);
+    return { id: listRef, title: listRef };
+  }
   const { containerId } = await resolveTool(ctx, projectRef, "todos");
   const org = await ctx.org();
   const lists = await org.recordings.children(containerId, {
@@ -159,7 +163,11 @@ export async function resolveColumn(
   projectRef: string,
   columnRef: string,
 ): Promise<{ id: string; title: string }> {
-  if (looksLikeId(columnRef)) return { id: columnRef, title: columnRef };
+  if (looksLikeId(columnRef)) {
+    // A project's link still names the org the column is in.
+    if (looksLikeUrl(projectRef)) await resolveProject(ctx, projectRef);
+    return { id: columnRef, title: columnRef };
+  }
   const { containerId } = await resolveTool(ctx, projectRef, "board");
   const org = await ctx.org();
   const columns = await org.recordings.children(containerId, {

@@ -57,18 +57,19 @@ async function list(
   _args: string[],
   options: Record<string, unknown>,
 ): Promise<CommandResult> {
-  const org = await ctx.org();
   let rows: RecordingRow[];
   let where: string;
   if (options.column) {
     const projectRef = requireIn(options);
     const column = await resolveColumn(ctx, projectRef, String(options.column));
+    const org = await ctx.org();
     rows = (await org.recordings.children(column.id, {
       type: "card",
     })) as RecordingRow[];
     where = `in "${column.title}"`;
   } else {
     const project = await resolveProject(ctx, requireIn(options));
+    const org = await ctx.org();
     rows = (await org.recordings.list({
       type: "card",
       project_id: project.id,
@@ -95,8 +96,8 @@ async function list(
 }
 
 async function show(ctx: CliContext, args: string[]): Promise<CommandResult> {
-  const org = await ctx.org();
   const id = resolveRecordingRef(ctx, args[0]).id;
+  const org = await ctx.org();
   const row = (await org.recordings.get(id)) as RecordingRow;
   const steps = (await org.recordings
     .children(id, { type: "step" })
@@ -173,8 +174,8 @@ async function move(
   if (!options.to) {
     throw new CliError("usage", "Where should the card go?", "Pass --to <column name or id>");
   }
-  const org = await ctx.org();
   const id = resolveRecordingRef(ctx, args[0]).id;
+  const org = await ctx.org();
   const card = (await org.recordings.get(id)) as RecordingRow;
   const projectRef = String(options.in ?? card.project_id ?? "");
   if (!projectRef) {

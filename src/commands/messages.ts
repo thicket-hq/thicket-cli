@@ -53,8 +53,9 @@ async function list(
 }
 
 async function show(ctx: CliContext, args: string[]): Promise<CommandResult> {
+  const id = resolveRecordingRef(ctx, args[0]).id;
   const org = await ctx.org();
-  const row = (await org.recordings.get(resolveRecordingRef(ctx, args[0]).id)) as RecordingRow;
+  const row = (await org.recordings.get(id)) as RecordingRow;
   return {
     data: row,
     summary: String(row.title ?? row.id),
@@ -138,8 +139,8 @@ async function update(
 
 function pin(on: boolean): CommandSpec["handler"] {
   return async (ctx, args) => {
-    const org = await ctx.org();
     const id = resolveRecordingRef(ctx, args[0]).id;
+    const org = await ctx.org();
     await org.request(on ? "PUT" : "DELETE", `/recordings/${id}/pin`);
     return {
       data: { id, pinned: on },

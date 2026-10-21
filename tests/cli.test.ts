@@ -195,19 +195,24 @@ describe("workspace references (docs/org-key-plan-2026-10-21.md D9)", () => {
     expect(asked).toBe(false);
   });
 
-  it("a command that scopes the org before reading the URL refuses another key outright, and acts on the same key", async () => {
-    let trashed = "";
-    const trash = (ref: string) => exec(["trash", card(ref), "--org", "acme-ab12cd34"], {
-      ...KEYED,
-      [`PUT /api/v1/acme-ab12cd34/recordings/${REC}/status/trashed`]: () => { trashed = ref; return {}; },
-      [`PUT /api/v1/beta-Xy9Qz/recordings/${REC}/status/trashed`]: () => { trashed = ref; return {}; },
-    });
-    const refused = await trash("beta-Xy9Qz");
+  it("a link read after the org was scoped refuses another key outright, and acts on the same key", async () => {
+    // cards move reads the card (scoping the org) before its --in link.
+    const COLUMN = "1e6b3cbb-0000-4000-8000-0000000000c9";
+    let moved = "";
+    const move = (ref: string) => exec(
+      ["cards", "move", REC, "--to", COLUMN, "--in", `https://www.thickethq.com/o/${ref}/projects/${PROJECTS[0].id}`, "--org", "acme-ab12cd34"],
+      {
+        ...KEYED,
+        [`GET /api/v1/acme-ab12cd34/recordings/${REC}`]: row,
+        [`PUT /api/v1/acme-ab12cd34/recordings/${REC}/position`]: () => { moved = ref; return {}; },
+      },
+    );
+    const refused = await move("beta-Xy9Qz");
     expect(refused.code).toBe(EXIT_CODES.usage);
     expect(JSON.parse(refused.err.join("\n")).error).toBe('That URL belongs to "beta-Xy9Qz" but --org says "acme-ab12cd34"');
-    expect(trashed).toBe("");
-    expect((await trash("old-name-ab12cd34")).code).toBe(0);
-    expect(trashed).toBe("old-name-ab12cd34");
+    expect(moved).toBe("");
+    expect((await move("old-name-ab12cd34")).code).toBe(0);
+    expect(moved).toBe("old-name-ab12cd34");
   });
 
   it("a stored org setting yields to a pasted URL without a check", async () => {

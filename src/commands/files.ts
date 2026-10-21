@@ -114,8 +114,9 @@ async function docsList(
 }
 
 async function docsShow(ctx: CliContext, args: string[]): Promise<CommandResult> {
+  const id = resolveRecordingRef(ctx, args[0]).id;
   const org = await ctx.org();
-  const row = (await org.recordings.get(resolveRecordingRef(ctx, args[0]).id)) as RecordingRow;
+  const row = (await org.recordings.get(id)) as RecordingRow;
   return {
     data: row,
     summary: String(row.title ?? row.id),
@@ -158,6 +159,8 @@ async function docsUpdate(
   args: string[],
   options: Record<string, unknown>,
 ): Promise<CommandResult> {
+  // The reference first: a URL names the org that mentions resolve in.
+  const id = resolveRecordingRef(ctx, args[0]).id;
   const body: Record<string, unknown> = {
     ...(await bodyFields(ctx, {
       content: await readBody(options.content),
@@ -170,7 +173,7 @@ async function docsUpdate(
     throw new CliError("usage", "Nothing to update", "Pass --title or --content");
   }
   const org = await ctx.org();
-  const updated = (await org.request("PATCH", `/recordings/${resolveRecordingRef(ctx, args[0]).id}`, {
+  const updated = (await org.request("PATCH", `/recordings/${id}`, {
     body,
   })) as RecordingRow;
   return {

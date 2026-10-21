@@ -19,10 +19,10 @@ async function cheer(
   if ([...content].length > 16) {
     throw new CliError("validation", "A cheer is at most 16 characters of text or emoji");
   }
-  const org = await ctx.org();
   if (options.event) {
     const eventId = String(options.event);
     if (!looksLikeId(eventId)) throw new CliError("usage", "--event needs an event id");
+    const org = await ctx.org();
     const result = await org.request<{ already_cheered?: boolean; id?: string }>(
       "POST",
       `/events/${eventId}/cheers`,
@@ -36,6 +36,7 @@ async function cheer(
   }
   const ref = resolveRecordingRef(ctx, args[0]);
   const target = ref.commentId ?? ref.id;
+  const org = await ctx.org();
   const created = await org.request<{ id: string; content: string }>(
     "POST",
     `/recordings/${target}/cheers`,

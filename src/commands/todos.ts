@@ -34,12 +34,12 @@ async function todosList(
   _args: string[],
   options: Record<string, unknown>,
 ): Promise<CommandResult> {
-  const org = await ctx.org();
   let rows: RecordingRow[];
   let where: string;
   if (options.list) {
     const listRef = String(options.list);
     const list = await resolveTodoList(ctx, requireIn(options), listRef);
+    const org = await ctx.org();
     rows = (await org.recordings.children(list.id, {
       type: "todo",
       ...(options.completed ? { completed: "true" } : {}),
@@ -47,6 +47,7 @@ async function todosList(
     where = `in "${list.title}"`;
   } else {
     const project = await resolveProject(ctx, requireIn(options));
+    const org = await ctx.org();
     rows = (await org.recordings.list({
       type: "todo",
       project_id: project.id,
@@ -70,8 +71,8 @@ async function todosShow(
   ctx: CliContext,
   args: string[],
 ): Promise<CommandResult> {
-  const org = await ctx.org();
   const id = resolveRecordingRef(ctx, args[0]).id;
+  const org = await ctx.org();
   const row = (await org.recordings.get(id)) as RecordingRow;
   const assignees = await org.request<{ membership_id: string; name: string }[]>(
     "GET",
@@ -96,7 +97,6 @@ async function todoAdd(
   options: Record<string, unknown>,
 ): Promise<CommandResult> {
   const projectRef = requireIn(options);
-  const org = await ctx.org();
   let parentId: string;
   let where: string;
   if (options.list) {
@@ -118,6 +118,7 @@ async function todoAdd(
       Array.isArray(options.assignee) ? options.assignee.map(String) : [String(options.assignee)],
     );
   }
+  const org = await ctx.org();
   const created = (await org.recordings.createChild(parentId, body as { type: string })) as RecordingRow;
   return {
     data: created,
@@ -137,7 +138,8 @@ async function todosUpdate(
   args: string[],
   options: Record<string, unknown>,
 ): Promise<CommandResult> {
-  const org = await ctx.org();
+  // The reference first: a URL names the org that mentions resolve in.
+  const id = resolveRecordingRef(ctx, args[0]).id;
   const body: Record<string, unknown> = {};
   if (options.title !== undefined) body.title = options.title;
   if (options.due !== undefined) {
@@ -150,9 +152,10 @@ async function todosUpdate(
   if (Object.keys(body).length === 0) {
     throw new CliError("usage", "Nothing to update", "Pass --title, --due, --start, or --notes");
   }
+  const org = await ctx.org();
   const updated = (await org.request(
     "PATCH",
-    `/recordings/${resolveRecordingRef(ctx, args[0]).id}`,
+    `/recordings/${id}`,
     { body },
   )) as RecordingRow;
   return {
@@ -164,7 +167,6 @@ async function todosUpdate(
 
 function completion(complete: boolean): CommandSpec["handler"] {
   return async (ctx, args) => {
-    const org = await ctx.org();
     const ids = args[0]
       .split(",")
       .map((s) => s.trim())
@@ -173,6 +175,7 @@ function completion(complete: boolean): CommandSpec["handler"] {
     if (ids.length === 0) {
       throw new CliError("usage", "No to-do ids given");
     }
+    const org = await ctx.org();
     const results: { id: string }[] = [];
     for (const id of ids) {
       if (complete) await org.recordings.complete(id);
