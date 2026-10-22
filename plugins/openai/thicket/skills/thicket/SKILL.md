@@ -13,7 +13,8 @@ Thicket is project management software. An organization holds projects; a projec
 2. Call `list_projects` for the projects you can see, then the tool for the content you need: `list_todo_lists` and `list_todos`, `list_messages`, `list_documents`, `list_boards` and `list_cards`, `list_schedule_entries`, `list_chat_messages`. `list_people` lists an organization's people, or with `project_id` the people on one project, with each person's role, title and company.
 3. `search` finds items across an organization, and `fetch` opens one by id. A thickethq.com link's path holds the organization slug and the item id.
 4. Reports answer in one call: `list_overdue_todos` for what's overdue across projects (days late, with a lateness bucket), `list_my_assignments` for the person's own work (open, one `due` window such as `due_today`, or `completed`; Up Next first), `list_person_assignments` for someone else's, and `list_activity`, `list_project_activity` and `list_person_activity` for what happened lately, newest first, with `since` for everything after the last look.
-5. Ids from one result feed the next call. Keep them exactly as returned, and never invent people, projects or membership ids: look them up.
+5. Check-ins: `list_check_ins` lists a project's questions with who they ask and the day each most recently asked for; `list_answers` reads one question's answers by day or by person, and who has answered.
+6. Ids from one result feed the next call. Keep them exactly as returned, and never invent people, projects or membership ids: look them up.
 
 ## Change things carefully
 
@@ -23,6 +24,7 @@ Thicket is project management software. An organization holds projects; a projec
 - A to-do's position is its priority, top first. Rank work with `move_todo` and `reorder_todos` rather than setting due dates, which trigger reminders.
 - `create_project` starts a project: invite-only with only the person on it unless `all_access` is true. Confirm the name and whether to open it to the whole team before creating it.
 - Junk or duplicate items go to the Trash with `trash_item`, never marked complete. The Trash keeps them for 30 days. Nothing here deletes permanently.
+- `answer_check_in` posts the person's answer to a check-in question for a day (default today) and notifies the question's subscribers; confirm the text first. `update_answer` corrects their own answer.
 - Time: `log_time` logs hours ("1.5" or "1:30") on an item, on the project itself or as absence, and `list_timesheet_entries` reads them. Deleting time happens in Thicket.
 
 ## Answering

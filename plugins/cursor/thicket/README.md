@@ -35,6 +35,7 @@ Sign-in is OAuth 2.1 with PKCE. Cursor registers itself with Thicket and opens T
 | Boards | List boards and cards; create, update and move cards |
 | Messages, comments and docs | Read and post messages and comments; read and update docs |
 | Chat | Read and post chat messages |
+| Check-ins | Read a project's questions and everyone's answers, answer yours, correct an answer |
 | Schedule and time | Read schedule entries; read, log and update time |
 | Reports and activity | What's overdue across projects, your assignments and anyone's, and what happened lately in a project, for one person or everywhere |
 | Notifications and follows | Read notifications and mark them read, follow and unfollow items, cheer |
