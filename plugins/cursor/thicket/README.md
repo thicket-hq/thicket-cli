@@ -39,7 +39,7 @@ Sign-in is OAuth 2.1 with PKCE. Cursor registers itself with Thicket and opens T
 | Schedule and time | Read schedule entries, add and change events; read, log and update time |
 | Reports and activity | What's overdue across projects, your assignments and anyone's, what happened lately in a project, for one person or everywhere, and the roadmap's markers |
 | Notifications and follows | Read notifications and mark them read, follow and unfollow items, cheer, see who cheered, take a cheer back |
-| Search | `search` across an organization and `fetch` for any item by its id |
+| Search and items | `search` across an organization, `fetch` for any item by its id or link, one kind of item across projects, archive and unarchive, file docs and folders |
 
 ## Notes
 
