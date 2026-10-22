@@ -11,7 +11,7 @@ Thicket is project management software. An organization holds projects; a projec
 
 1. Call `list_organizations` first. Every other tool takes the organization slug it returns.
 2. Call `list_projects` for the projects you can see, then the tool for the content you need: `list_todo_lists` and `list_todos`, `list_messages`, `list_documents`, `list_boards` and `list_cards`, `list_schedule_entries`, `list_chat_messages` (a project's Chat by `project_id`, or a private chat by `chat_id` from `list_chats`). `list_people` lists an organization's people, or with `project_id` the people on one project, with each person's role, title and company.
-3. `search` finds items across an organization, and `fetch` opens one by id. A thickethq.com link's path holds the organization slug and the item id.
+3. `search` finds items across an organization, and `fetch` opens one by id or by its thickethq.com link, pasted as is; every tool that takes an item id takes its link too.
 4. Reports answer in one call: `list_overdue_todos` for what's overdue across projects (days late, with a lateness bucket), `list_my_assignments` for the person's own work (open, one `due` window such as `due_today`, or `completed`; Up Next first), `list_person_assignments` for someone else's, and `list_activity`, `list_project_activity` and `list_person_activity` for what happened lately, newest first, with `since` for everything after the last look.
 5. Check-ins: `list_check_ins` lists a project's questions with who they ask and the day each most recently asked for; `list_answers` reads one question's answers by day or by person, and who has answered.
 6. Ids from one result feed the next call. Keep them exactly as returned, and never invent people, projects or membership ids: look them up.
