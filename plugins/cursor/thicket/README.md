@@ -30,7 +30,7 @@ Sign-in is OAuth 2.1 with PKCE. Cursor registers itself with Thicket and opens T
 
 | Area | Tools |
 | --- | --- |
-| Organizations, projects and people | List the organizations, projects and people you can see |
+| Organizations, projects and people | List the organizations and projects you can see, start a project, and see who is on a project and in an organization |
 | To-dos | List, create, update, complete, move and reorder to-dos and to-do lists |
 | Boards | List boards and cards; create, update and move cards |
 | Messages, comments and docs | Read and post messages and comments; read and update docs |

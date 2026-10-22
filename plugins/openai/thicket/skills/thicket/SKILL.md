@@ -10,7 +10,7 @@ Thicket is project management software. An organization holds projects; a projec
 ## Find things top down
 
 1. Call `list_organizations` first. Every other tool takes the organization slug it returns.
-2. Call `list_projects` for the projects you can see, then the tool for the content you need: `list_todo_lists` and `list_todos`, `list_messages`, `list_documents`, `list_boards` and `list_cards`, `list_schedule_entries`, `list_chat_messages`, `list_people`.
+2. Call `list_projects` for the projects you can see, then the tool for the content you need: `list_todo_lists` and `list_todos`, `list_messages`, `list_documents`, `list_boards` and `list_cards`, `list_schedule_entries`, `list_chat_messages`. `list_people` lists an organization's people, or with `project_id` the people on one project, with each person's role, title and company.
 3. `search` finds items across an organization, and `fetch` opens one by id. A thickethq.com link's path holds the organization slug and the item id.
 4. Ids from one result feed the next call. Keep them exactly as returned, and never invent people, projects or membership ids: look them up.
 
@@ -20,6 +20,7 @@ Thicket is project management software. An organization holds projects; a projec
 - Creates and posts take an `idempotency_key`. Mint a fresh UUID for each intended action, and reuse it only to retry that same action.
 - Writes post as the connected person and notify people immediately, and a sent notification cannot be recalled. Confirm an ambiguous target (which project, which list, which person) before posting.
 - A to-do's position is its priority, top first. Rank work with `move_todo` and `reorder_todos` rather than setting due dates, which trigger reminders.
+- `create_project` starts a project: invite-only with only the person on it unless `all_access` is true. Confirm the name and whether to open it to the whole team before creating it.
 - Junk or duplicate items go to the Trash with `trash_item`, never marked complete. The Trash keeps them for 30 days. Nothing here deletes permanently.
 - Time: `log_time` logs hours ("1.5" or "1:30") on an item, on the project itself or as absence, and `list_timesheet_entries` reads them. Deleting time happens in Thicket.
 
