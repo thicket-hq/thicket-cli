@@ -33,7 +33,7 @@ Sign-in is OAuth 2.1 with PKCE. Cursor registers itself with Thicket and opens T
 | Organizations, projects and people | List the organizations and projects you can see, start a project, and see who is on a project and in an organization |
 | To-dos | List, create, update, complete, move and reorder to-dos and to-do lists |
 | Boards | List boards and cards; create, update and move cards |
-| Messages, comments and docs | Read and post messages and comments; read and update docs |
+| Messages, comments and docs | Read and post messages and comments; read, write and update docs, publish a draft |
 | Chat | Read and post chat messages |
 | Check-ins | Read a project's questions and everyone's answers, answer yours, correct an answer |
 | Schedule and time | Read schedule entries, add and change events; read, log and update time |
