@@ -20,6 +20,7 @@ Thicket is project management software. An organization holds projects; a projec
 
 - Read before you update. `update_todo`, `move_todo`, `move_card`, `update_card`, `update_message`, `update_document`, `update_event`, `update_answer`, `update_card_step`, `update_timesheet_entry` and `trash_item` take the `expected_updated_at` you last read and refuse a stale one. Re-read, then retry.
 - Creates and posts take an `idempotency_key`. Mint a fresh UUID for each intended action, and reuse it only to retry that same action.
+- Text you post is Markdown. To mention someone, paste the `mention` token `list_people` gives for them, `[@Name](member:<membership id>)`; a bare `@First` works only when one person matches. Never invent a token.
 - Writes post as the connected person and notify people immediately, and a sent notification cannot be recalled. Confirm an ambiguous target (which project, which list, which person) before posting.
 - A to-do's position is its priority, top first. Rank work with `move_todo` and `reorder_todos` rather than setting due dates, which trigger reminders.
 - `create_project` starts a project: invite-only with only the person on it unless `all_access` is true. Confirm the name and whether to open it to the whole team before creating it.
