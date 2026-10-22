@@ -15,7 +15,8 @@ Thicket is project management software. An organization holds projects; a projec
 4. The roadmap: `list_roadmap_markers` reads the organization's dated markers, `create_roadmap_marker` and `update_roadmap_marker` tend them (owners and admins); a project's bar is its `starts_on` and `ends_on`, set with `update_project`.
 5. Reports answer in one call: `list_overdue_todos` for what's overdue across projects (days late, with a lateness bucket), `list_my_assignments` for the person's own work (open, one `due` window such as `due_today`, or `completed`; Up Next first), `list_person_assignments` for someone else's, and `list_activity`, `list_project_activity` and `list_person_activity` for what happened lately, newest first, with `since` for everything after the last look.
 6. Check-ins: `list_check_ins` lists a project's questions with who they ask and the day each most recently asked for; `list_answers` reads one question's answers by day or by person, and who has answered.
-7. Ids from one result feed the next call. Keep them exactly as returned, and never invent people, projects or membership ids: look them up.
+7. To follow a workspace, `poll_events` reads every event across the person's projects oldest first from a position; pass back the position each call returns, and refetch an item before acting on its event.
+8. Ids from one result feed the next call. Keep them exactly as returned, and never invent people, projects or membership ids: look them up.
 
 ## Change things carefully
 

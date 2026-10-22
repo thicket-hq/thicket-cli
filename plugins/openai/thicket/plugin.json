@@ -25,7 +25,7 @@
       "interface": {
         "displayName": "Thicket - Project Management",
         "shortDescription": "Manage projects and to-dos",
-        "longDescription": "Thicket is project management software: projects hold to-do lists, message boards, docs and files, card tables, a schedule, chat and timesheets. With this plugin, ChatGPT works in your Thicket projects with your own access, and everything it does appears under your name.\n\nAsk what's due this week and who has it, what a thread decided, or what's on the calendar across every project. Turn meeting notes into to-dos on the right list and assign them. Post an update to a project's message board, comment on a thread, move cards along a board, follow or unfollow items, and log time on the work you did.\n\nYou decide how much ChatGPT can do. The approval screen in Thicket asks whether to allow reading only, or reading and making changes, and lists the organizations the connection covers. ChatGPT sees only what you can see in Thicket. Items it sends to the Trash stay recoverable for 30 days, and it never deletes anything permanently. Disconnect any time from My settings, Connected apps, in Thicket, and the next request is refused.\n\nIncluded on every Thicket plan, Free included.",
+        "longDescription": "Thicket is project management software: projects hold to-do lists, message boards, docs and files, card tables, a schedule, chat and timesheets. With this plugin, ChatGPT works in your Thicket projects with your own access, and everything it does appears under your name.\n\nAsk what's due this week and who has it, what a thread decided, or what's on the calendar across every project. Turn meeting notes into to-dos on the right list and assign them. Post an update to a project's message board, comment on a thread, move cards along a board, follow or unfollow items, and log time on the work you did.\n\nYou decide how much ChatGPT can do. The approval screen in Thicket asks whether to allow reading only, or reading and making changes, and lists the organizations the connection covers. ChatGPT sees only what you can see in Thicket. Items it sends to the Trash stay recoverable for 30 days, and it never deletes anything permanently. Disconnect any time from My settings, Connected apps, in Thicket, and the next request is refused.",
         "developerName": "Vesperion Gate Inc.",
         "category": "Productivity",
         "capabilities": [
@@ -33,6 +33,7 @@
           "Write"
         ],
         "websiteURL": "https://www.thickethq.com",
+        "supportURL": "https://www.thickethq.com/support",
         "privacyPolicyURL": "https://www.vesperiongate.com/policies/privacy",
         "termsOfServiceURL": "https://www.vesperiongate.com/policies/terms",
         "defaultPrompt": [
