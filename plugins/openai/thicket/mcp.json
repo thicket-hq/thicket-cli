@@ -3,17 +3,7 @@
   "mcpServers": {
     "thicket": {
       "type": "streamable-http",
-      "url": "https://www.thickethq.com/api/mcp",
-      "extensions": {
-        "com.openai": {
-          "auth": {
-            "type": "oauth",
-            "client": {
-              "mode": "cimd"
-            }
-          }
-        }
-      }
+      "url": "https://www.thickethq.com/api/mcp"
     }
   }
 }
