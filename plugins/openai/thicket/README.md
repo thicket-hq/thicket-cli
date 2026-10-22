@@ -10,7 +10,7 @@ Open **Plugins** in ChatGPT, search for **Thicket**, click **Install**, then sig
 
 ## Package
 
-- `plugin.json`: the portable manifest, with ChatGPT's listing fields under `extensions.com.openai`.
+- `plugin.json`: the portable manifest, with ChatGPT's listing fields under `extensions.com.openai`. Its `name` is the plugin's identifier in OpenAI's portal (`app-6a98…`), which an update must match; the listing's display name is `displayName`.
 - `mcp.json`: the server, `https://www.thickethq.com/api/mcp`, with OAuth 2.1 (PKCE, client identification by metadata document, dynamic registration as the fallback). No API key or client secret.
 - `skills/`: the two skills ChatGPT loads with the plugin.
 - `assets/`: the logo and composer icon.
