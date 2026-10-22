@@ -29,6 +29,7 @@ Thicket is project management software. An organization holds projects; a projec
 - `answer_check_in` posts the person's answer to a check-in question for a day (default today) and notifies the question's subscribers; confirm the text first. `update_answer` corrects their own answer.
 - A card's steps: `fetch` the card to see them; `add_card_step`, `update_card_step`, `set_card_step_completion` and `reorder_card_steps` work them.
 - Messages: `list_categories` gives the category ids `create_message` and `update_message` take; `set_message_pinned` pins a message to the top of its board (ten at most) or unpins it.
+- Cheers: `cheer` leaves a short reaction, `list_cheers` shows who cheered an item or an event, `remove_cheer` takes one back (a cheer never changes; cheer again instead), and `list_my_cheers` reads the ones the person received and gave.
 - `create_document` writes a document into a project's Docs & Files, at the top or in a folder (folder ids from `list_documents`), published (which notifies the project) or as a draft; `publish_draft` publishes a draft. Confirm the text before publishing.
 - Private chats: `list_chats` lists the person's, `start_chat` finds or starts one with named people, and `post_chat_message` with `chat_id` posts in it; the people in it are notified.
 - `create_event` adds an event to a project's Calendar (or the person's account calendar when no project is given) and `update_event` changes one; invited people are notified, so confirm the time and the invitees first.
