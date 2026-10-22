@@ -23,7 +23,7 @@ Thicket is project management software. An organization holds projects; a projec
 - Text you post is Markdown. To mention someone, paste the `mention` token `list_people` gives for them, `[@Name](member:<membership id>)`; a bare `@First` works only when one person matches. Never invent a token.
 - Writes post as the connected person and notify people immediately, and a sent notification cannot be recalled. Confirm an ambiguous target (which project, which list, which person) before posting.
 - A to-do's position is its priority, top first. Rank work with `move_todo` and `reorder_todos` rather than setting due dates, which trigger reminders.
-- `create_project` starts a project: invite-only with only the person on it unless `all_access` is true. Confirm the name and whether to open it to the whole team before creating it.
+- `create_project` starts a project: invite-only with only the person on it unless `all_access` is true. Confirm the name and whether to open it to the whole team before creating it. `update_project` changes its details and dates, `set_project_status` archives, restores or trashes it (the Trash keeps it 30 days), and `set_project_access` adds or removes people by membership id; confirm before archiving, trashing or removing anyone.
 - Junk or duplicate items go to the Trash with `trash_item`, never marked complete. The Trash keeps them for 30 days. Nothing here deletes permanently.
 - `answer_check_in` posts the person's answer to a check-in question for a day (default today) and notifies the question's subscribers; confirm the text first. `update_answer` corrects their own answer.
 - A card's steps: `fetch` the card to see them; `add_card_step`, `update_card_step`, `set_card_step_completion` and `reorder_card_steps` work them.
