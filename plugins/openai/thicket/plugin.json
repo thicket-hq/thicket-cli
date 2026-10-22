@@ -44,6 +44,70 @@
         "brandColor": "#008236",
         "composerIcon": "./assets/icon.png",
         "logo": "./assets/logo.png"
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "List the projects the connected account can see.",
+              "prompt": "What projects are in my Thicket account?",
+              "tools_triggered": "list_organizations, list_projects",
+              "expected_behavior": "ChatGPT calls list_organizations, then list_projects for Review Co, and answers with the two projects, Launch and Handbook, each with its Thicket link."
+            },
+            {
+              "description": "Read the open to-dos in one list.",
+              "prompt": "Show me the open to-dos in the Launch checklist.",
+              "tools_triggered": "list_projects, list_todo_lists, list_todos",
+              "expected_behavior": "ChatGPT finds the Launch project and its Launch checklist, then lists its three open to-dos: Book venue, Order badges and Confirm speakers."
+            },
+            {
+              "description": "Create a to-do in a named list.",
+              "prompt": "Add a to-do 'Draft launch email' to the Launch checklist.",
+              "tools_triggered": "list_todo_lists, create_todo",
+              "expected_behavior": "ChatGPT creates exactly one to-do named Draft launch email in the Launch checklist and answers with its link. A retried call with the same idempotency key returns the same to-do instead of a duplicate."
+            },
+            {
+              "description": "Edit and complete the to-do just created.",
+              "prompt": "Rename that to-do to 'Draft and schedule launch email' and mark it done.",
+              "tools_triggered": "update_todo, set_todo_completion",
+              "expected_behavior": "ChatGPT reads the to-do, renames it to Draft and schedule launch email using its current expected_updated_at, and marks it completed. Thicket shows the renamed to-do checked off in the Launch checklist."
+            },
+            {
+              "description": "Search the workspace and open a result.",
+              "prompt": "Find anything about onboarding in this workspace.",
+              "tools_triggered": "search, fetch",
+              "expected_behavior": "ChatGPT searches for onboarding and answers with the Onboarding guide document in the Handbook project, with its link. The Welcome message may appear as an additional relevant result."
+            }
+          ],
+          "negative": [
+            {
+              "description": "General advice that needs no workspace data.",
+              "prompt": "What's a good format for a weekly team standup?"
+            },
+            {
+              "description": "A request for another product the plugin has no access to.",
+              "prompt": "Add 'buy milk' to my Apple Reminders list."
+            },
+            {
+              "description": "A question about the word, not the product.",
+              "prompt": "What does the word thicket mean? Use it in a sentence."
+            }
+          ]
+        },
+        "demo_recording_url": "https://www.thickethq.com/help/review-media/thicket-openai-demo-f74c512e.mp4",
+        "commerce": false,
+        "commerce_description": "No purchases, payments, subscriptions or transfers happen through the plugin. Thicket plans are managed in Thicket's own billing settings on the web."
+      },
+      "publication": {
+        "countries": [
+          "US",
+          "CA",
+          "GB",
+          "AU",
+          "IE",
+          "NZ"
+        ],
+        "release_notes": "First release. Connects ChatGPT to your Thicket organizations with your own access, reading only or reading and making changes, as you approve in Thicket. Lists projects and people; reads and writes to-dos, messages, comments, docs, cards, schedule entries, chat and time entries; searches the workspace. Changes post under your name and can notify people. Items sent to the Trash stay recoverable for 30 days, and nothing is deleted permanently. Disconnect any time in Thicket under My settings, Connected apps."
       }
     }
   }
