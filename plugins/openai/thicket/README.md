@@ -11,6 +11,7 @@ Open **Plugins** in ChatGPT, search for **Thicket**, click **Install**, then sig
 ## Package
 
 - `plugin.json`: the portable manifest, with ChatGPT's listing fields under `extensions.com.openai`. Its `name` is the plugin's identifier in OpenAI's portal (`app-6a98…`), which an update must match; the listing's display name is `displayName`.
+- `extensions.com.openai.interface.supportURL` in that manifest supplies the listing's Support URL: `https://www.thickethq.com/support`. Upload the updated ZIP to import it, then check the Support link under Metadata & Skills.
 - `mcp.json`: the server, `https://www.thickethq.com/api/mcp`. It declares no authentication on purpose: the portal keeps the OAuth connection it already holds for this plugin (OAuth 2.1 with PKCE, client identification by metadata document, dynamic registration as the fallback; no API key or client secret) and refuses a package that overrides it.
 - `skills/`: the two skills ChatGPT loads with the plugin.
 - `assets/`: the logo and composer icon.
@@ -19,8 +20,8 @@ Zip the `thicket` folder to upload it: `cd plugins/openai && zip -r thicket.zip 
 
 ## Notes
 
-- Tool calls run as the Thicket person who approves the connection, with that person's permissions. Changes are attributed to them.
-- Trashed items stay recoverable from Thicket's Trash for 30 days. The connector never deletes anything permanently.
+- Tool calls run as the Thicket person who approves the connection, with that person's permissions. On Thicket's approval screen they pick Read-only access or Full access. Changes are attributed to them.
+- Items moved to Trash can be restored in Thicket for 30 days before permanent deletion.
 - Disconnect any time from **My settings, Connected apps** in Thicket. The next request is refused.
 
 ## Docs
@@ -28,6 +29,7 @@ Zip the `thicket` folder to upload it: `cd plugins/openai && zip -r thicket.zip 
 - Thicket and AI assistants: https://www.thickethq.com/ai
 - Setup, permissions and disconnecting: https://www.thickethq.com/help/mcp
 - Server URL: https://www.thickethq.com/api/mcp
+- Privacy policy and terms: https://www.thickethq.com/privacy and https://www.thickethq.com/terms
 
 ## License
 

@@ -24,7 +24,7 @@ Find, read and update to-dos, cards, messages, docs and chat in the Thicket orga
 }
 ```
 
-Sign-in is OAuth 2.1 with PKCE. Cursor registers itself with Thicket and opens Thicket's approval screen in your browser, so there's no API key or client ID to set up. The approval screen shows what was asked for, reading only or reading and making changes, and the organizations the connection covers.
+Sign-in is OAuth 2.1 with PKCE. Cursor registers itself with Thicket and opens Thicket's approval screen in your browser, so there's no API key or client ID to set up. The approval screen shows what was asked for and the organizations the connection covers, and when Cursor asks to make changes you pick Read-only access or Full access.
 
 ## What agents can do
 

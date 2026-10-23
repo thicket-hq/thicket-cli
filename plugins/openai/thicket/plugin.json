@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "app-6a98974632548191bbb3ba2ddfe1d894",
-  "version": "1.0.0",
-  "description": "Work in your Thicket projects from ChatGPT: find what's due and who has it, turn notes into to-dos, post updates, move cards and log time, with your own access.",
+  "version": "1.0.2",
+  "description": "Work in your Thicket projects from ChatGPT: find what's due and who's responsible, turn notes into to-dos, post updates, move cards and log time, with your account's permissions.",
   "author": {
     "name": "Vesperion Gate Inc.",
     "email": "support@thickethq.com",
@@ -25,7 +25,7 @@
       "interface": {
         "displayName": "Thicket - Project Management",
         "shortDescription": "Manage projects and to-dos",
-        "longDescription": "Thicket is project management software: projects hold to-do lists, message boards, docs and files, card tables, a schedule, chat and timesheets. With this plugin, ChatGPT works in your Thicket projects with your own access, and everything it does appears under your name.\n\nAsk what's due this week and who has it, what a thread decided, or what's on the calendar across every project. Turn meeting notes into to-dos on the right list and assign them. Post an update to a project's message board, comment on a thread, move cards along a board, follow or unfollow items, and log time on the work you did.\n\nYou decide how much ChatGPT can do. The approval screen in Thicket asks whether to allow reading only, or reading and making changes, and lists the organizations the connection covers. ChatGPT sees only what you can see in Thicket. Items it sends to the Trash stay recoverable for 30 days, and it never deletes anything permanently. Disconnect any time from My settings, Connected apps, in Thicket, and the next request is refused.",
+        "longDescription": "Thicket is project management software for organizing work, keeping responsibilities and deadlines clear, and working together in one place.\n\nUse ChatGPT to find what's due and who's responsible, summarize project conversations, and turn meeting notes into assigned to-dos. Post project updates, comment on discussions, move cards between board columns, check schedules, and log time.\n\nYou stay in control. ChatGPT sees and does only what you can in Thicket, nothing more. When you approve access, pick Read-only access or Full access. In ChatGPT you can require approval before it posts or changes anything, and you can disconnect anytime.\n\nChanges are made under your name and may notify other people. Disconnect in Thicket under My settings → Connected apps.",
         "developerName": "Vesperion Gate Inc.",
         "category": "Productivity",
         "capabilities": [
@@ -34,8 +34,8 @@
         ],
         "websiteURL": "https://www.thickethq.com",
         "supportURL": "https://www.thickethq.com/support",
-        "privacyPolicyURL": "https://www.vesperiongate.com/policies/privacy",
-        "termsOfServiceURL": "https://www.vesperiongate.com/policies/terms",
+        "privacyPolicyURL": "https://www.thickethq.com/privacy",
+        "termsOfServiceURL": "https://www.thickethq.com/terms",
         "defaultPrompt": [
           "What's due this week in my Thicket projects, and who has it?",
           "Turn these meeting notes into to-dos in Thicket and assign them.",
@@ -49,31 +49,31 @@
         "test_cases": {
           "positive": [
             {
-              "description": "List the projects the connected account can see.",
+              "description": "List the projects the connected account can see. Run positive cases 1 through 5 in order in the same conversation, using the Review Co demo account, approved with Full access on Thicket's approval screen.",
               "prompt": "What projects are in my Thicket account?",
               "tools_triggered": "list_organizations, list_projects",
               "expected_behavior": "ChatGPT calls list_organizations, then list_projects for Review Co, and answers with the two projects, Launch and Handbook, each with its Thicket link."
             },
             {
-              "description": "Read the open to-dos in one list.",
+              "description": "Read the open to-dos in one list. Continue after case 1 in the same conversation, before creating the to-do in case 3.",
               "prompt": "Show me the open to-dos in the Launch checklist.",
-              "tools_triggered": "list_projects, list_todo_lists, list_todos",
+              "tools_triggered": "list_todo_lists, list_todos; list_projects if the Launch project has not already been resolved",
               "expected_behavior": "ChatGPT finds the Launch project and its Launch checklist, then lists its three open to-dos: Book venue, Order badges and Confirm speakers."
             },
             {
-              "description": "Create a to-do in a named list.",
+              "description": "Create a to-do in the list resolved in case 2. Continue in the same conversation and keep the returned item for case 4.",
               "prompt": "Add a to-do 'Draft launch email' to the Launch checklist.",
-              "tools_triggered": "list_todo_lists, create_todo",
-              "expected_behavior": "ChatGPT creates exactly one to-do named Draft launch email in the Launch checklist and answers with its link. A retried call with the same idempotency key returns the same to-do instead of a duplicate."
+              "tools_triggered": "create_todo; list_todo_lists if the Launch checklist has not already been resolved",
+              "expected_behavior": "ChatGPT creates exactly one new to-do named Draft launch email in the Launch checklist for this request and answers with its link."
             },
             {
-              "description": "Edit and complete the to-do just created.",
+              "description": "Edit and complete the specific to-do returned by case 3. Run this immediately after case 3 in the same conversation; that to-do refers to the item just created, not an older item with the same title.",
               "prompt": "Rename that to-do to 'Draft and schedule launch email' and mark it done.",
-              "tools_triggered": "update_todo, set_todo_completion",
+              "tools_triggered": "fetch, update_todo, set_todo_completion",
               "expected_behavior": "ChatGPT reads the to-do, renames it to Draft and schedule launch email using its current expected_updated_at, and marks it completed. Thicket shows the renamed to-do checked off in the Launch checklist."
             },
             {
-              "description": "Search the workspace and open a result.",
+              "description": "Search Review Co and open a result. Continue in the same conversation so this workspace refers to Review Co.",
               "prompt": "Find anything about onboarding in this workspace.",
               "tools_triggered": "search, fetch",
               "expected_behavior": "ChatGPT searches for onboarding and answers with the Onboarding guide document in the Handbook project, with its link. The Welcome message may appear as an additional relevant result."
@@ -81,16 +81,22 @@
           ],
           "negative": [
             {
-              "description": "General advice that needs no workspace data.",
-              "prompt": "What's a good format for a weekly team standup?"
+              "description": "General advice that needs no workspace data. Run in a new conversation; no Thicket tools should be called.",
+              "prompt": "What's a good format for a weekly team standup?",
+              "tools_triggered": "None",
+              "expected_behavior": "ChatGPT gives a general weekly standup format without calling Thicket tools or reading or changing workspace data."
             },
             {
-              "description": "A request for another product the plugin has no access to.",
-              "prompt": "Add 'buy milk' to my Apple Reminders list."
+              "description": "A request for another product the plugin has no access to. Run in a new conversation; no Thicket tools should be called.",
+              "prompt": "Add 'buy milk' to my Apple Reminders list.",
+              "tools_triggered": "None",
+              "expected_behavior": "ChatGPT does not call Thicket tools or create a Thicket to-do. If a suitable authorized reminders tool is available, it may use that; otherwise it explains that it cannot add the reminder with Thicket and offers manual steps. It does not claim the reminder was created unless the requested action succeeds."
             },
             {
-              "description": "A question about the word, not the product.",
-              "prompt": "What does the word thicket mean? Use it in a sentence."
+              "description": "A question about the word, not the product. Run in a new conversation; no Thicket tools should be called.",
+              "prompt": "What does the word thicket mean? Use it in a sentence.",
+              "tools_triggered": "None",
+              "expected_behavior": "ChatGPT defines the ordinary word thicket and gives an example sentence without calling Thicket tools or accessing workspace data."
             }
           ]
         },
@@ -107,7 +113,7 @@
           "IE",
           "NZ"
         ],
-        "release_notes": "First release. Connects ChatGPT to your Thicket organizations with your own access, reading only or reading and making changes, as you approve in Thicket. Lists projects and people; reads and writes to-dos, messages, comments, docs, cards, schedule entries, chat and time entries; searches the workspace. Changes post under your name and can notify people. Items sent to the Trash stay recoverable for 30 days, and nothing is deleted permanently. Disconnect any time in Thicket under My settings, Connected apps."
+        "release_notes": "Version 1.0.2: Thicket's approval screen now offers Read-only access or Full access whenever ChatGPT asks to make changes, and the privacy policy and terms links use thickethq.com. Connects ChatGPT to the Thicket organizations you authorize, with your own access. Changes are made under your name and may notify other people. Items moved to Trash can be restored in Thicket for 30 days before permanent deletion. Disconnect at any time in Thicket under My settings → Connected apps."
       }
     }
   }

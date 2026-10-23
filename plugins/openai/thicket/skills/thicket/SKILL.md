@@ -1,6 +1,6 @@
 ---
 name: thicket
-description: Work in Thicket through the Thicket tools. Find, read, create and update projects, to-dos, cards, messages, comments, docs, schedule entries, chat and time entries. Use for any Thicket question or action, and for any thickethq.com link.
+description: Find, read, create and update Thicket project-management data through the Thicket tools. Use when the person asks to work with Thicket workspace data or provides a link to a Thicket workspace item.
 ---
 
 # Working in Thicket
@@ -23,12 +23,12 @@ Thicket is project management software. An organization holds projects; a projec
 - Read before you update. `update_todo`, `move_todo`, `move_card`, `update_card`, `update_message`, `update_document`, `update_event`, `update_answer`, `update_card_step`, `update_timesheet_entry` and `trash_item` take the `expected_updated_at` you last read and refuse a stale one. Re-read, then retry.
 - Creates and posts take an `idempotency_key`. Mint a fresh UUID for each intended action, and reuse it only to retry that same action.
 - Text you post is Markdown. To mention someone, paste the `mention` token `list_people` gives for them, `[@Name](member:<membership id>)`; a bare `@First` works only when one person matches. Never invent a token.
-- Writes post as the connected person and notify people immediately, and a sent notification cannot be recalled. Confirm an ambiguous target (which project, which list, which person) before posting.
+- Writes post as the connected person and may notify people immediately. A sent notification cannot be recalled. Confirm an ambiguous target (which project, which list, which person) before posting.
 - Groups and subtasks: `create_todo_group` makes a section inside a list, `update_todo_list` and `reorder_todo_lists` tend lists and groups, and `add_subtask` adds a subtask under a to-do; a to-do's id works as `list_todos`' and `reorder_todos`' container for its subtasks.
 - A to-do's position is its priority, top first. Rank work with `move_todo` and `reorder_todos` rather than setting due dates, which trigger reminders.
 - `create_project` starts a project: invite-only with only the person on it unless `all_access` is true. Confirm the name and whether to open it to the whole team before creating it. `update_project` changes its details and dates, `set_project_status` archives, restores or trashes it (the Trash keeps it 30 days), and `set_project_access` adds or removes people by membership id; confirm before archiving, trashing or removing anyone.
 - `archive_item` takes an item off its page and `unarchive_item` brings it back; `move_item` files a doc, file or folder into another folder; `list_items` reads one kind of item across projects.
-- Junk or duplicate items go to the Trash with `trash_item`, never marked complete. The Trash keeps them for 30 days. Nothing here deletes permanently.
+- Junk or duplicate items go to the Trash with `trash_item`, never marked complete. Items moved to Trash can be restored in Thicket for 30 days before permanent deletion.
 - `answer_check_in` posts the person's answer to a check-in question for a day (default today) and notifies the question's subscribers; confirm the text first. `update_answer` corrects their own answer.
 - A card's steps: `fetch` the card to see them; `add_card_step`, `update_card_step`, `set_card_step_completion` and `reorder_card_steps` work them.
 - Messages: `list_categories` gives the category ids `create_message` and `update_message` take; `set_message_pinned` pins a message to the top of its board (ten at most) or unpins it.
