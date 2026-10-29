@@ -1,5 +1,5 @@
 // Organization references resolve as the web's do (thicket
-// apps/web/src/lib/org-ref.ts): the exact slug, then the key a reference
+// src/lib/org-ref.ts): the exact slug, then the key a reference
 // carries; never a whole-string match on anything but the current slug.
 import { describe, expect, it } from "vitest";
 import { findOrgByRef, orgRefKey } from "../src/lib/org-ref.js";

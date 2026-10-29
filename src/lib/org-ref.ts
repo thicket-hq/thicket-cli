@@ -1,5 +1,5 @@
 // Organization references, as the web resolves them (thicket
-// apps/web/src/lib/org-ref.ts; docs/org-key-plan-2026-10-21.md D4, D9): a
+// src/lib/org-ref.ts; docs/org-key-plan-2026-10-21.md D4, D9): a
 // workspace's identity is its id or its permanent key, and a slug is only
 // for building paths. A rename regenerates the slug, and every address that
 // ever named the workspace keeps naming it through the key it carries.
