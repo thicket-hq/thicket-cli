@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "thicket": {
-      "type": "http",
-      "url": "https://www.thickethq.com/api/mcp",
-      "placement": "server"
-    }
-  }
-}

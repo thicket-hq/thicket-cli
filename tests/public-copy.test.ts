@@ -1,6 +1,7 @@
-// Guard: this repository, its npm package, its Claude Code plugin and its
-// Cursor plugin are public, so everything in them is product copy, code
-// comments included.
+// Guard: this repository, its npm package and its Claude Code plugin are
+// public, so everything in them is product copy, code comments included.
+// (The Cursor and ChatGPT plugins live in thicket-hq/plugins, with the
+// same guard in its validator.)
 // Thicket is described by what it does and never names a competitor.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -23,7 +24,7 @@ function files(dir: string): string[] {
 describe("public copy names no competitor", () => {
   it("sources, tests, skills, hooks, plugins, plugin manifests, workflows, and docs", () => {
     const scanned = [
-      ...["src", "tests", "skills", "hooks", ".claude-plugin", ".cursor-plugin", "plugins", ".github"].flatMap(
+      ...["src", "tests", "skills", "hooks", ".claude-plugin", ".github"].flatMap(
         (dir) => files(join(ROOT, dir)),
       ),
       ...["README.md", "AGENTS.md", "CLAUDE.md", "install.md", "package.json"].map((name) =>
