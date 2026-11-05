@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "app-6a98974632548191bbb3ba2ddfe1d894",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Work in your Thicket projects from ChatGPT: find what's due and who's responsible, turn notes into to-dos, post updates, move cards and log time, with your account's permissions.",
   "author": {
     "name": "Vesperion Gate Inc.",
@@ -52,7 +52,7 @@
               "description": "List the projects the connected account can see. Run positive cases 1 through 5 in order in the same conversation, using the Review Co demo account, approved with Full access on Thicket's approval screen.",
               "prompt": "What projects are in my Thicket account?",
               "tools_triggered": "list_organizations, list_projects",
-              "expected_behavior": "ChatGPT calls list_organizations, then list_projects for Review Co, and answers with the two projects, Launch and Handbook, each with its Thicket link."
+              "expected_behavior": "ChatGPT calls list_organizations, then list_projects for Review Co, and answers with its three active projects: Launch, Handbook and the Website Redesign sample project, each with its Thicket link."
             },
             {
               "description": "Read the open to-dos in one list. Continue after case 1 in the same conversation, before creating the to-do in case 3.",
@@ -69,13 +69,13 @@
             {
               "description": "Edit and complete the specific to-do returned by case 3. Run this immediately after case 3 in the same conversation; that to-do refers to the item just created, not an older item with the same title.",
               "prompt": "Rename that to-do to 'Draft and schedule launch email' and mark it done.",
-              "tools_triggered": "fetch, update_todo, set_todo_completion",
-              "expected_behavior": "ChatGPT reads the to-do, renames it to Draft and schedule launch email using its current expected_updated_at, and marks it completed. Thicket shows the renamed to-do checked off in the Launch checklist."
+              "tools_triggered": "update_todo, set_todo_completion; fetch if the current expected_updated_at is not already available from the item returned by case 3",
+              "expected_behavior": "ChatGPT renames the specific to-do returned by case 3 to Draft and schedule launch email using its current expected_updated_at, then marks it completed. It may use the timestamp returned when the item was created, or fetch its current state first. If the item has changed, it reads the latest state before retrying. Thicket shows the renamed to-do checked off in the Launch checklist."
             },
             {
-              "description": "Search Review Co and open a result. Continue in the same conversation so this workspace refers to Review Co.",
+              "description": "Search Review Co for relevant content. Continue in the same conversation so this workspace refers to Review Co.",
               "prompt": "Find anything about onboarding in this workspace.",
-              "tools_triggered": "search, fetch",
+              "tools_triggered": "search; fetch if details beyond the search results are needed",
               "expected_behavior": "ChatGPT searches for onboarding and answers with the Onboarding guide document in the Handbook project, with its link. The Welcome message may appear as an additional relevant result."
             }
           ],
@@ -113,7 +113,7 @@
           "IE",
           "NZ"
         ],
-        "release_notes": "Version 1.0.2: Thicket's approval screen now offers Read-only access or Full access whenever ChatGPT asks to make changes, and the privacy policy and terms links use thickethq.com. Connects ChatGPT to the Thicket organizations you authorize, with your own access. Changes are made under your name and may notify other people. Items moved to Trash can be restored in Thicket for 30 days before permanent deletion. Disconnect at any time in Thicket under My settings → Connected apps."
+        "release_notes": "Version 1.0.3: Updates the review cases to match Review Co's current sample projects and the verified tool behavior. Thicket's approval screen offers Read-only access or Full access whenever ChatGPT asks to make changes, and the privacy policy and terms links use thickethq.com. Connects ChatGPT to the Thicket organizations you authorize, with your own access. Changes are made under your name and may notify other people. Items moved to Trash can be restored in Thicket for 30 days before permanent deletion. Disconnect at any time in Thicket under My settings → Connected apps."
       }
     }
   }
