@@ -27,7 +27,7 @@ This is the official Thicket CLI (`thicket`), a thin presentation layer over the
 
 - `skills/thicket-cli/SKILL.md` teaches the CLI; `skills/thicket-connect/SKILL.md` runs a named agent (connect, setup, the connector) and `skills/thicket-connect/subagent.md` handles one request. `thicket skill install` and `thicket setup claude` copy them; edit the source here, never an installed copy.
 - `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` make this repo a Claude Code plugin and its own marketplace; `hooks/hooks.json` wires `thicket agent-hook session-start`. Bump the version in both manifests with `package.json`.
-- The Cursor Marketplace plugin (Cursor and Grok Bot) and the ChatGPT plugin package live in `thicket-hq/plugins` (`Apps/thicket-plugins`) since 2026-11-04, not here: this repository's root is the Claude Code plugin's manifest, and an indexer that followed the Cursor plugin's `repository` link to this root showed the Claude Code plugin instead. Never add a `.cursor-plugin/` index or a `plugins/` folder back here.
+- The Cursor Marketplace plugin (Cursor and Grok Bot) and the ChatGPT plugin package live in `thicket-hq/plugins` (`Apps/thicket-plugins`) since 2026-11-04, not here: this repository's root is the Claude Code plugin's manifest (Cursor imports it as such for anyone who has it installed), and a marketplace repository's root should hold only that marketplace's index, as the product org's plugin repository does beside its CLI repository. Never add a `.cursor-plugin/` index or a `plugins/` folder back here.
 
 ## Releases
 
