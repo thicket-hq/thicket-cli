@@ -41,8 +41,8 @@ describe("the thicket-connect skill", () => {
       "more than a minute",
       "subagent.md",
       "`owner`",
-      "My settings > My agent",
-      "Admin > Manage agents",
+      "Me > Agent",
+      "Admin > Agents",
     ]) expect(skill, words).toContain(words);
   });
 

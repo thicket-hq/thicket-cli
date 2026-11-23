@@ -159,7 +159,7 @@ async function logout(ctx: CliContext): Promise<CommandResult> {
       ? `Signed out: the stored token for profile "${profile}" was removed from this machine.`
       : `Nothing stored for profile "${profile}".`,
     notice: had && !connection
-      ? `The token itself stays valid until revoked: ${baseUrl} → My settings → API tokens`
+      ? `The token itself stays valid until revoked: ${baseUrl} → Me → API Tokens`
       : gone
         ? "Thicket had already ended this agent connection (a newer connection replaced it, or it was disconnected in the app)"
         : undefined,
@@ -393,8 +393,8 @@ const loginSpec: Omit<CommandSpec, "path"> = {
   ],
   notes: [
     "Read-and-write access is shown before approval; --scope read requests read-only access",
-    "Disconnect browser connections in My settings, Connected apps, or run thicket auth logout",
-    "Personal access tokens remain managed in My settings, API tokens",
+    "Disconnect browser connections in Me, under Connected Apps, or run thicket auth logout",
+    "Personal access tokens remain managed in Me, under API Tokens",
   ],
   handler: login,
 };
@@ -406,7 +406,7 @@ export const authCommands: CommandSpec[] = [
     path: ["auth", "logout"],
     category: CATEGORY,
     summary: "Disconnect OAuth and remove this profile's stored credentials",
-    notes: ["Personal tokens are only removed locally; revoke them in My settings, API tokens"],
+    notes: ["Personal tokens are only removed locally; revoke them in Me, under API Tokens"],
     handler: logout,
   },
   {

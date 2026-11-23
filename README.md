@@ -64,9 +64,9 @@ thicket auth token               # print the current access token for a script
 thicket auth logout              # disconnect OAuth and remove saved credentials
 ```
 
-Review and disconnect browser connections in **My settings > Connected apps**. Changes appear under your name and follow your current project permissions.
+Review and disconnect browser connections in **Me > Connected Apps**. Changes appear under your name and follow your current project permissions.
 
-Headless automation can use a personal token: `printf '%s' "$THICKET_TOKEN" | thicket auth login --with-token`, or set `THICKET_TOKEN` per process. `THICKET_TOKEN_STORE=file` uses the private credentials file instead of the system keyring. Revoke personal tokens separately in **My settings > API tokens**; signing out only removes those tokens locally.
+Headless automation can use a personal token: `printf '%s' "$THICKET_TOKEN" | thicket auth login --with-token`, or set `THICKET_TOKEN` per process. `THICKET_TOKEN_STORE=file` uses the private credentials file instead of the system keyring. Revoke personal tokens separately in **Me > API Tokens**; signing out only removes those tokens locally.
 
 Existing personal tokens from older CLI versions keep working. Update the CLI and run `thicket auth login` to switch to OAuth, then revoke the old personal token when it is no longer needed.
 
@@ -145,7 +145,7 @@ Membership ids identify assignees and mentions. Personal OAuth acts under your n
 
 ## Named agents
 
-A named agent is a Thicket person of its own, with no sign-in, that people mention, assign to-dos and cards, and send direct messages, like a teammate. A personal agent is yours: create it while connecting, and manage its name, projects and connection in **My settings > My agent**. Owners and admins create shared agents and choose their projects in **Admin > Manage agents**. An agent reaches only the projects it was added to, and posts under its own name.
+A named agent is a Thicket person of its own, with no sign-in, that people mention, assign to-dos and cards, and send direct messages, like a teammate. A personal agent is yours: create it while connecting, and manage its name, projects and connection in **Me > Agent**. Owners and admins create shared agents and choose their projects in **Admin > Agents**. An agent reaches only the projects it was added to, and posts under its own name.
 
 It works through a Claude Code session on your computer. In Claude Code, run `/thicket-connect` and it walks you through these steps:
 
@@ -169,7 +169,7 @@ The Claude Code session acknowledges each request with a cheer within seconds, h
 
 The connector needs Full access. A Read-only connection can read through the CLI as the agent, but it can't run `thicket connect`, so it never listens or replies: `thicket connect setup` and `thicket connect` both refuse it. To change the access, disconnect with `thicket auth logout --profile helper` and connect again choosing Full.
 
-Keep that session running on a Mac that stays on: there is no background service, and nothing queues while it is off. Requests made more than a minute before the connector started aren't picked up. Stopping it marks unfinished work interrupted, and nothing is retried. Connecting the agent again replaces its earlier connection. Disconnect in My settings > My agent or Admin > Manage agents, or with `thicket auth logout --profile helper`.
+Keep that session running on a Mac that stays on: there is no background service, and nothing queues while it is off. Requests made more than a minute before the connector started aren't picked up. Stopping it marks unfinished work interrupted, and nothing is retried. Connecting the agent again replaces its earlier connection. Disconnect in Me > Agent or Admin > Agents, or with `thicket auth logout --profile helper`.
 
 ## AI agent integration
 

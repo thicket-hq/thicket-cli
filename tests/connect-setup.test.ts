@@ -196,7 +196,7 @@ describe("connect setup: projects", () => {
     const env = environment(); await connectedAgent(env);
     const notOn = await setup(env, ["--serve", P3]);
     expect(notOn.code).toBe(EXIT_CODES.validation);
-    expect(notOn.error().error).toContain("Admin > Manage agents");
+    expect(notOn.error().error).toContain("Admin > Agents");
     expect(fileText(env)).toBeNull();
 
     expect((await setup(env, ["--serve", P1, "--serve", P2, "--watch-completions", P2])).code).toBe(0);
@@ -217,7 +217,7 @@ describe("connect setup: projects", () => {
     const empty = await setup(env, [], agentThicket({ projects: [] }));
     expect(empty.code).toBe(EXIT_CODES.validation);
     expect(empty.error().error).toContain("on no projects");
-    expect(empty.error().error).toContain("My settings > My agent");
+    expect(empty.error().error).toContain("Me > Agent");
     expect(empty.error().error).not.toContain("can't see");
     expect(empty.calls.some((c) => c.path.endsWith(`/people/${JASON}`))).toBe(false);
     expect(fileText(env)).toBeNull();

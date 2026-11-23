@@ -136,8 +136,8 @@ export async function revokeOAuthConnection(connection: OAuthCredential | AgentC
   if (connection.kind === "agent" && response.status === 401) return "already_gone";
   if (!response.ok) throw new CliError("auth", `Could not disconnect from Thicket (HTTP ${response.status})`,
     connection.kind === "agent"
-      ? "Try again, or disconnect the agent in My settings > My agent (personal) or Admin > Manage agents (shared)"
-      : "Try again, or disconnect from My settings, Connected apps");
+      ? "Try again, or disconnect the agent in Me > Agent (personal) or Admin > Agents (shared)"
+      : "Try again, or disconnect from Me, under Connected Apps");
   return "revoked";
 }
 
@@ -172,7 +172,7 @@ export async function requestAgentTokens(baseUrl: string, clientId: string, clie
   });
   const body = await response.json().catch(() => null) as Record<string, unknown> | null;
   if (!response.ok) throw new CliError(response.status >= 500 || response.status === 429 ? "network" : "auth",
-    `Agent connection failed (HTTP ${response.status})`, "Check the agent's connection in My settings > My agent (personal) or Admin > Manage agents (shared)");
+    `Agent connection failed (HTTP ${response.status})`, "Check the agent's connection in Me > Agent (personal) or Admin > Agents (shared)");
   if (typeof body?.access_token !== "string" || !body.access_token.startsWith("thicket_agt_") ||
       typeof body.expires_in !== "number" || !Number.isFinite(body.expires_in) || body.expires_in <= 0 ||
       typeof body.scope !== "string" || String(body.token_type).toLowerCase() !== "bearer") {

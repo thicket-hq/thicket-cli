@@ -19,7 +19,7 @@ import { recordingUrl } from "../lib/urls.js";
 import { diag, makeAbort } from "../lib/watch-io.js";
 
 const PROFILE_RE = /^[a-zA-Z0-9_-]{1,80}$/;
-const WHERE_AGENTS_LIVE = "Admin > Manage agents (a shared agent) or My settings > My agent (your personal agent)";
+const WHERE_AGENTS_LIVE = "Admin > Agents (a shared agent) or Me > Agent (your personal agent)";
 
 function profile(ctx: CliContext) {
   if (ctx.env.THICKET_TOKEN?.trim()) throw new CliError("usage", "Unset THICKET_TOKEN: a named agent uses its own profile's connection");
@@ -560,7 +560,7 @@ export const connectCommands: CommandSpec[] = [
     notes: [
       "Use a separate --profile. In the browser you pick your personal agent (or create it), or a shared agent, and choose Full or Read-only access",
       "One connection per agent: approving a new one disconnects the earlier one. This profile is never overwritten; disconnect it first with thicket auth logout --profile <name>",
-      "Personal agents are managed in My settings > My agent, shared agents in Admin > Manage agents. Next: thicket connect setup --profile <name>",
+      "Personal agents are managed in Me > Agent, shared agents in Admin > Agents. Next: thicket connect setup --profile <name>",
     ],
     handler: (ctx, _args, options) => pairAgent(ctx, options) },
   { path: ["connect"], category, summary: "Run the connector: hold the agent's session and print each trusted request",

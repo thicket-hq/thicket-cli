@@ -33,11 +33,10 @@ Code setup, and the agent replies where the request was made.
 Three pieces:
 
 - **The agent**: a Thicket person of its own, with no sign-in. A personal
-  agent belongs to one person, its owner, who manages it in **My settings >
-  My agent**. A shared agent belongs to the organization; owners and admins
-  manage it in **Admin > Manage agents**. Either reaches only the projects it
-  was added to. On this computer it has its own CLI profile, usually named
-  after it.
+  agent belongs to one person, its owner, who manages it in **Me > Agent**.
+  A shared agent belongs to the organization; owners and admins manage it
+  in **Admin > Agents**. Either reaches only the projects it was added to.
+  On this computer it has its own CLI profile, usually named after it.
 - **The connector**: `thicket connect --profile '<profile>'`. It holds the
   agent's session, checks every request against the settings on this
   computer (who may give it work, which projects it serves), and prints one
@@ -55,7 +54,7 @@ on a computer that stays on and awake. Nothing queues while it is off.
 
 If the person only wants help with Thicket in this conversation, this skill is
 the wrong one: use `thicket auth login` and the thicket-cli skill. That
-connection acts as them and is managed in My settings, Connected apps.
+connection acts as them and is managed in Me, under Connected Apps.
 
 ## Invocation
 
@@ -139,7 +138,7 @@ Look up membership ids with the person's own login, without `--profile`:
 lists the projects the agent is on. Show the names, let them choose, and map
 each to its id yourself. When a name matches more than one project, ask. An
 empty list means the agent is on no projects: the person adds it to projects
-in Admin > Manage agents (shared) or My settings > My agent (personal), then
+in Admin > Agents (shared) or Me > Agent (personal), then
 setup runs again.
 
 **5. Confirm, then run setup.** Say back the agent, who may give it work, and
@@ -441,4 +440,4 @@ until it is started again, and that nothing queues meanwhile.
 
 To disconnect the agent from this computer for good, run
 `thicket auth logout --profile '<profile>'`, or use Disconnect in
-My settings > My agent or Admin > Manage agents.
+Me > Agent or Admin > Agents.
